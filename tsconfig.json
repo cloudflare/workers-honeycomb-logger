@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2020",
+    "declaration": true,
+    "outDir": "./dist",
+    "lib": ["es2020", "webworker"],
+    "strict": true
+  },
+  "include": ["src/**/*"]
+}
