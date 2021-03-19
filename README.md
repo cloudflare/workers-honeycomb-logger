@@ -34,10 +34,11 @@ const hc_config = {
   apiKey: '<api_key>',
   dataset: 'my-first-dataset',
 }
-
-addEventListener('fetch', hc(hc_config, (event) => {
+const listener = hc(hc_config, (event) => {
   event.respondWith(handleRequest(event.request))
-}))
+})
+
+addEventListener('fetch', listener)
 
 function handleRequest(request) {
   //your worker code.
