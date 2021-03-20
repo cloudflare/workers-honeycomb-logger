@@ -101,7 +101,7 @@ class Span {
     return [event, ...childEvents]
   }
 
-  public addData(data: any) {
+  public addData(data: object) {
     Object.assign(this.data, data)
   }
 
