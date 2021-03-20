@@ -3,8 +3,12 @@
   "version": "0.1.0",
   "description": "Utility to log all request invocations to Honeycomb.io",
   "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "repository": "git@github.com:evanderkoogh/worker-bees.git",
   "author": "Erwin van der Koogh <erwin@cloudflare.com>",
+  "scripts": {
+    "build": "tsc"
+  },
   "license": "MIT",
   "dependencies": {
     "@cloudflare/workers-types": "^2.2.1",
