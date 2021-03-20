@@ -1,9 +1,15 @@
-### Introduction
-
 Honeycomb logger is a simple library that lets you extremely easy export runtime information from your Cloudflare Workers into [Honeycomb](https://honeycomb.io).
 Honeycomb is an observability platform which allows you to query and graph across any (number of) dimension(s) you have in your data. So you can for example graph request duration for 200 response codes, for GET requests, to a particular URL, for a particular customer.
 
 Or you can drill into all an entire trace of a request that errored out, including all subrequests.
+
+Table of Contents
+- [Beta Warning](#beta-warning)
+- [Getting Started](#getting-started)
+- [Config](#config)
+- [Adding logs and other data](#adding-logs-and-other-data)
+- [Traces](#traces)
+- [Dynamic Sampling](#dynamic-sampling)
 
 ### Beta Warning!
 
@@ -64,7 +70,7 @@ interface Config {
 }
 ```
 
-### Adding logs & other data
+### Adding logs and other data
 
 If you want to add any other data or logs to the current request, you can use the `tracer.addData(data: object)` and `tracer.log(message: string)` methods.
 You can get a reference to the tracer either on the request object, or the second argument in the listener.
