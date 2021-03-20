@@ -5,6 +5,7 @@
     "declaration": true,
     "outDir": "./dist",
     "lib": ["es2020", "webworker"],
+    "types": ["@cloudflare/workers-types"],
     "strict": true
   },
   "include": ["src/**/*"]
