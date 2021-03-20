@@ -1,5 +1,5 @@
 {
-  "name": "worker-bees",
+  "name": "@cloudflare/workers-honeycomb-logger",
   "version": "0.1.0",
   "description": "Utility to log all request invocations to Honeycomb.io",
   "main": "./dist/index.js",
