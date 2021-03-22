@@ -292,8 +292,6 @@ const configDefaults: InternalConfig = {
 }
 
 class LogWrapper {
-  protected responseResolve?: PromiseResolve<Response>
-  protected responseReject?: PromiseReject
   protected waitUntilResolve?: PromiseResolve<void>
   protected responseFinished: boolean = false
   protected openUserWait: boolean = false
@@ -301,12 +299,12 @@ class LogWrapper {
   protected waitUntilSpan: Span
   protected waitUntilUsed: boolean = false
   protected readonly config: InternalConfig
-  constructor(public readonly event: WorkerEvent, listener: Listener, config: Config) {
+  constructor(public readonly event: WorkerEvent, protected listener: Listener, config: Config) {
     this.config = Object.assign({}, configDefaults, config)
     this.tracer = new RequestTracer(event.request, this.config)
     this.waitUntilSpan = this.tracer.startChildSpan('waitUntil', 'worker')
     this.setupWaitUntil(event)
-    this.setUpRespondWith(event, listener)
+    this.setUpRespondWith()
   }
 
   protected async sendEvents(): Promise<void> {
@@ -320,11 +318,9 @@ class LogWrapper {
   protected finishResponse(response?: Response, error?: any) {
     if (response) {
       this.tracer.addResponse(response)
-      this.responseResolve!(response)
     } else {
       this.tracer.addData({ exception: true, responseException: error.toString() })
       if (error.stack) this.tracer.addData({ stacktrace: error.stack })
-      this.responseReject!(error)
     }
     this.responseFinished = true
     this.tracer.finish()
@@ -373,17 +369,12 @@ class LogWrapper {
     })
   }
 
-  private setUpRespondWith(event: WorkerEvent, listener: Listener) {
-    const responsePromise = new Promise<Response>((resolve, reject) => {
-      this.responseResolve = resolve
-      this.responseReject = reject
-    })
-    event.respondWith(responsePromise)
+  private setUpRespondWith() {
     this.proxyRespondWith()
     try {
-      event.request.tracer = this.tracer
-      event.waitUntilTracer = this.waitUntilSpan
-      listener(event, this.tracer)
+      this.event.request.tracer = this.tracer
+      this.event.waitUntilTracer = this.waitUntilSpan
+      this.listener(this.event, this.tracer)
     } catch (err) {
       this.finishResponse(undefined, err)
     }
@@ -392,15 +383,22 @@ class LogWrapper {
   private proxyRespondWith() {
     const logger = this
     this.event.respondWith = new Proxy(this.event.respondWith, {
-      apply: function (_target, _thisArg, argArray) {
+      apply: function (target, thisArg, argArray) {
         const promise: Promise<Response> = Promise.resolve(argArray[0])
-        promise
-          .then((response) => {
+        promise.then((response) => {
+          setTimeout(() => {
             logger.finishResponse(response)
-          })
-          .catch((reason?) => {
+          }, 1)
+          return response
+        })
+        promise.catch((reason) => {
+          setTimeout(() => {
             logger.finishResponse(undefined, reason)
-          })
+          }, 1)
+          throw reason
+        })
+        argArray[0] = promise
+        Reflect.apply(target, thisArg, argArray) //call event.respondWith with the wrapped promise
       },
     })
   }
