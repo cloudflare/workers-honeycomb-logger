@@ -30,6 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 import { v4 as uuidv4 } from 'uuid'
+import { PromiseSettledCoordinator } from './promises'
 
 declare global {
   interface FetchEvent {
@@ -71,7 +72,6 @@ interface InternalConfig extends Config {
 type OrPromise<T> = T | PromiseLike<T>
 
 type PromiseResolve<T> = (value: OrPromise<T>) => void
-type PromiseReject = (reason?: any) => void
 
 interface TraceInfo {
   span_id: string
@@ -194,12 +194,10 @@ class Span {
       .then((response) => {
         childSpan.addResponse(response)
         childSpan.finish()
-        return response
       })
       .catch((reason) => {
         childSpan.addData({ exception: reason })
         childSpan.finish()
-        throw reason
       })
     return promise
   }
@@ -293,26 +291,27 @@ const configDefaults: InternalConfig = {
 
 class LogWrapper {
   protected waitUntilResolve?: PromiseResolve<void>
-  protected responseFinished: boolean = false
-  protected openUserWait: boolean = false
   protected readonly tracer: RequestTracer
   protected waitUntilSpan: Span
   protected waitUntilUsed: boolean = false
   protected readonly config: InternalConfig
+  protected readonly settler: PromiseSettledCoordinator
   constructor(public readonly event: WorkerEvent, protected listener: Listener, config: Config) {
     this.config = Object.assign({}, configDefaults, config)
     this.tracer = new RequestTracer(event.request, this.config)
     this.waitUntilSpan = this.tracer.startChildSpan('waitUntil', 'worker')
-    this.setupWaitUntil(event)
+    this.setupWaitUntil()
     this.setUpRespondWith()
+    this.settler = new PromiseSettledCoordinator(() => {
+      this.waitUntilSpan.finish()
+      this.sendEvents()
+    })
   }
 
   protected async sendEvents(): Promise<void> {
-    if (this.responseFinished && !this.openUserWait) {
-      const excludes = this.waitUntilUsed ? [] : ['waitUntil']
-      await this.tracer.sendEvents(excludes)
-      this.waitUntilResolve!()
-    }
+    const excludes = this.waitUntilUsed ? [] : ['waitUntil']
+    await this.tracer.sendEvents(excludes)
+    this.waitUntilResolve!()
   }
 
   protected finishResponse(response?: Response, error?: any) {
@@ -322,33 +321,27 @@ class LogWrapper {
       this.tracer.addData({ exception: true, responseException: error.toString() })
       if (error.stack) this.tracer.addData({ stacktrace: error.stack })
     }
-    this.responseFinished = true
     this.tracer.finish()
-    this.sendEvents()
   }
 
   protected startWaitUntil() {
-    this.openUserWait = true
     this.waitUntilUsed = true
     this.waitUntilSpan.start()
   }
 
   protected finishWaitUntil(error?: any) {
-    this.openUserWait = false
     if (error) {
       this.tracer.addData({ exception: true, waitUtilException: error.toString() })
       this.waitUntilSpan.addData({ exception: error })
       if (error.stack) this.waitUntilSpan!.addData({ stacktrace: error.stack })
     }
-    this.waitUntilSpan.finish()
-    this.sendEvents()
   }
 
-  private setupWaitUntil(event: WorkerEvent): void {
+  private setupWaitUntil(): void {
     const waitUntilPromise = new Promise<void>((resolve) => {
       this.waitUntilResolve = resolve
     })
-    event.waitUntil(waitUntilPromise)
+    this.event.waitUntil(waitUntilPromise)
     this.proxyWaitUntil()
   }
 
@@ -358,6 +351,7 @@ class LogWrapper {
       apply: function (_target, _thisArg, argArray) {
         logger.startWaitUntil()
         const promise: Promise<any> = Promise.resolve(argArray[0])
+        logger.settler.addPromise(promise)
         promise
           .then(() => {
             logger.finishWaitUntil()
@@ -384,21 +378,24 @@ class LogWrapper {
     const logger = this
     this.event.respondWith = new Proxy(this.event.respondWith, {
       apply: function (target, thisArg, argArray) {
-        const promise: Promise<Response> = Promise.resolve(argArray[0])
-        promise.then((response) => {
-          setTimeout(() => {
-            logger.finishResponse(response)
-          }, 1)
-          return response
-        })
-        promise.catch((reason) => {
-          setTimeout(() => {
-            logger.finishResponse(undefined, reason)
-          }, 1)
-          throw reason
-        })
-        argArray[0] = promise
         Reflect.apply(target, thisArg, argArray) //call event.respondWith with the wrapped promise
+        const responsePromise: Promise<Response> = Promise.resolve(argArray[0])
+        const promise = new Promise<Response>((resolve, reject) => {
+          responsePromise
+            .then((response) => {
+              setTimeout(() => {
+                logger.finishResponse(response)
+                resolve(response)
+              }, 1)
+            })
+            .catch((reason) => {
+              setTimeout(() => {
+                logger.finishResponse(undefined, reason)
+                reject(reason)
+              }, 1)
+            })
+        })
+        logger.settler.addPromise(promise)
       },
     })
   }

@@ -8,5 +8,5 @@
     "types": ["@cloudflare/workers-types"],
     "strict": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "run/*.ts"]
 }
