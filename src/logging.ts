@@ -31,16 +31,19 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import { v4 as uuidv4 } from 'uuid'
 
-export type WorkerEvent = FetchEvent
-export type TracerRequest = Request & { tracer: Span }
-interface TracerEventAdditions {
-  request: TracerRequest
-  waitUntilTracer: Span
-}
-export type TracerEvent = Omit<WorkerEvent, 'request'> & TracerEventAdditions
+declare global {
+  interface FetchEvent {
+    waitUntilTracer: Span
+  }
 
-export type Listener = (event: WorkerEvent) => void
-export type TracerListener = (event: TracerEvent | WorkerEvent, tracer?: RequestTracer) => void
+  interface Request {
+    tracer: Span
+  }
+}
+
+export type WorkerEvent = FetchEvent
+
+export type Listener = (event: FetchEvent, tracer: Span) => void
 
 export type SampleRateFn = (request: Request, response?: Response) => number
 export interface SampleRates {
@@ -298,7 +301,7 @@ class LogWrapper {
   protected waitUntilSpan: Span
   protected waitUntilUsed: boolean = false
   protected readonly config: InternalConfig
-  constructor(public readonly event: WorkerEvent, listener: TracerListener, config: Config) {
+  constructor(public readonly event: WorkerEvent, listener: Listener, config: Config) {
     this.config = Object.assign({}, configDefaults, config)
     this.tracer = new RequestTracer(event.request, this.config)
     this.waitUntilSpan = this.tracer.startChildSpan('waitUntil', 'worker')
@@ -370,7 +373,7 @@ class LogWrapper {
     })
   }
 
-  private setUpRespondWith(event: WorkerEvent, listener: TracerListener) {
+  private setUpRespondWith(event: WorkerEvent, listener: Listener) {
     const responsePromise = new Promise<Response>((resolve, reject) => {
       this.responseResolve = resolve
       this.responseReject = reject
@@ -378,10 +381,9 @@ class LogWrapper {
     event.respondWith(responsePromise)
     this.proxyRespondWith()
     try {
-      const trace_event = event as TracerEvent
-      trace_event.request.tracer = this.tracer
-      trace_event.waitUntilTracer = this.waitUntilSpan
-      listener(trace_event, this.tracer)
+      event.request.tracer = this.tracer
+      event.waitUntilTracer = this.waitUntilSpan
+      listener(event, this.tracer)
     } catch (err) {
       this.finishResponse(undefined, err)
     }
@@ -404,7 +406,7 @@ class LogWrapper {
   }
 }
 
-export function hc(config: Config, listener: TracerListener): Listener {
+export function hc(config: Config, listener: Listener): Listener {
   return new Proxy(listener, {
     apply: function (_target, _thisArg, argArray) {
       const event = argArray[0] as WorkerEvent
