@@ -298,12 +298,12 @@ class LogWrapper {
     this.config = Object.assign({}, configDefaults, config)
     this.tracer = new RequestTracer(event.request, this.config)
     this.waitUntilSpan = this.tracer.startChildSpan('waitUntil', 'worker')
-    this.setupWaitUntil()
-    this.setUpRespondWith()
     this.settler = new PromiseSettledCoordinator(() => {
       this.waitUntilSpan.finish()
       this.sendEvents()
     })
+    this.setupWaitUntil()
+    this.setUpRespondWith()
   }
 
   protected async sendEvents(): Promise<void> {
@@ -376,8 +376,8 @@ class LogWrapper {
     const logger = this
     this.event.respondWith = new Proxy(this.event.respondWith, {
       apply: function (target, thisArg, argArray) {
-        Reflect.apply(target, thisArg, argArray) //call event.respondWith with the wrapped promise
         const responsePromise: Promise<Response> = Promise.resolve(argArray[0])
+        Reflect.apply(target, thisArg, argArray) //call event.respondWith with the wrapped promise
         const promise = new Promise<Response>((resolve, reject) => {
           responsePromise
             .then((response) => {
