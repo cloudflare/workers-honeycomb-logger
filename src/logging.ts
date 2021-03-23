@@ -268,7 +268,7 @@ class RequestTracer extends Span {
     } else if (!response) {
       return sampleRates.exception
     } else {
-      const key = `${response.status / 100}xx`
+      const key = `${response.status.toString()[0]}xx`
       return sampleRates[key]
     }
   }
