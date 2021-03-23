@@ -1,10 +1,10 @@
 {
   "name": "@cloudflare/workers-honeycomb-logger",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Utility to log all request invocations to Honeycomb.io",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "repository": "git@github.com:evanderkoogh/worker-bees.git",
+  "repository": "git@github.com:cloudflare/workers-honeycomb-logger.git",
   "author": "Erwin van der Koogh <erwin@cloudflare.com>",
   "scripts": {
     "build": "tsc"
