@@ -44,8 +44,6 @@ declare global {
 
 export type WorkerEvent = FetchEvent
 
-export type Listener = (event: FetchEvent, tracer: Span) => void
-
 export type SampleRateFn = (request: Request, response?: Response) => number
 export interface SampleRates {
   '2xx': number
@@ -296,7 +294,7 @@ class LogWrapper {
   protected waitUntilUsed: boolean = false
   protected readonly config: InternalConfig
   protected readonly settler: PromiseSettledCoordinator
-  constructor(public readonly event: WorkerEvent, protected listener: Listener, config: Config) {
+  constructor(public readonly event: WorkerEvent, protected listener: EventListener, config: Config) {
     this.config = Object.assign({}, configDefaults, config)
     this.tracer = new RequestTracer(event.request, this.config)
     this.waitUntilSpan = this.tracer.startChildSpan('waitUntil', 'worker')
@@ -368,7 +366,7 @@ class LogWrapper {
     try {
       this.event.request.tracer = this.tracer
       this.event.waitUntilTracer = this.waitUntilSpan
-      this.listener(this.event, this.tracer)
+      this.listener(this.event)
     } catch (err) {
       this.finishResponse(undefined, err)
     }
@@ -401,7 +399,7 @@ class LogWrapper {
   }
 }
 
-export function hc(config: Config, listener: Listener): Listener {
+export function hc(config: Config, listener: EventListener): EventListener {
   return new Proxy(listener, {
     apply: function (_target, _thisArg, argArray) {
       const event = argArray[0] as WorkerEvent
