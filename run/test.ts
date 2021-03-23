@@ -1,4 +1,4 @@
-import { Listener, hc, WorkerEvent } from '../src/index'
+import { hc, WorkerEvent } from '../src/index'
 //@ts-ignore
 import * as fetch from 'node-fetch'
 
@@ -9,19 +9,31 @@ globalThis.Request = fetch.Request
 globalThis.Response = fetch.Response
 globalThis.Headers = fetch.Headers
 
-const addEventListener2 = (type: string, listener: Listener) => {
+const isPromise = (obj: any | Promise<any>): obj is Promise<any> => {
+  return !!obj.then
+}
+
+const addEventListener2 = (type: string, listener: EventListener) => {
   const event = {
     request: new Request('https://blah.com'),
     respondWith: (response: Response | Promise<Response>) => {
       console.log(`got: ${response}`)
+      if (isPromise(response)) {
+        response.then((r) => {
+          console.log(r)
+        })
+      }
     },
     waitUntil: (promise: Promise<any>) => {
       console.log('added waitUntil!')
+      promise.then((value) => {
+        console.log('WaitUntilFinished')
+        console.log(value)
+      })
     },
   }
   //@ts-ignore
   listener(event)
-  console.log('Too late!')
 }
 
 const config = {
