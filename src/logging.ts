@@ -177,9 +177,9 @@ class Span {
   public finish() {
     this.eventMeta.duration_ms = Date.now() - this.eventMeta.timestamp
     if (this.isRootSpan() && this.config.parse && this.request) {
-      this.addData(this.config.parse(this.request.clone(), this.response?.clone()))
+      this.addData(this.config.parse(this.request, this.response))
     } else if (this.request && this.config.parseSubrequest) {
-      this.addData(this.config.parseSubrequest(this.request.clone(), this.response?.clone()))
+      this.addData(this.config.parseSubrequest(this.request, this.response))
     }
   }
 
