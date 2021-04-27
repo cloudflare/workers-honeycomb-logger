@@ -93,10 +93,8 @@ interface SpanInit {
 }
 
 const convertHeaders = (from: Headers): Record<string, string> => {
-  const to = {}
-  //@ts-ignore
+  const to: Record<string, string> = {}
   for (const [key, value] of from.entries()) {
-    //@ts-ignore
     to[key.toLowerCase()] = value
   }
   return to
@@ -312,10 +310,10 @@ class LogWrapper {
     this.waitUntilResolve!()
   }
 
-  protected finishResponse(response?: Response, error?: any) {
+  protected finishResponse(response?: Response, error?: Error) {
     if (response) {
       this.tracer.addResponse(response)
-    } else {
+    } else if (error) {
       this.tracer.addData({ exception: true, responseException: error.toString() })
       if (error.stack) this.tracer.addData({ stacktrace: error.stack })
     }
@@ -327,7 +325,7 @@ class LogWrapper {
     this.waitUntilSpan.start()
   }
 
-  protected finishWaitUntil(error?: any) {
+  protected finishWaitUntil(error?: Error) {
     if (error) {
       this.tracer.addData({ exception: true, waitUtilException: error.toString() })
       this.waitUntilSpan.addData({ exception: error })
