@@ -7,7 +7,8 @@
   "repository": "git@github.com:cloudflare/workers-honeycomb-logger.git",
   "author": "Erwin van der Koogh <erwin@cloudflare.com>",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "prepack": "tsc"
   },
   "license": "MIT",
   "dependencies": {
