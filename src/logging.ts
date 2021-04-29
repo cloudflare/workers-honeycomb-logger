@@ -293,10 +293,8 @@ class LogWrapper {
   protected waitUntilUsed: boolean = false
   protected readonly config: InternalConfig
   protected readonly settler: PromiseSettledCoordinator
-  constructor(public readonly event: WorkerEvent, protected listener: EventListener, config: Config) {
-    config.redactRequestHeaders = config.redactRequestHeaders?.map((header) => header.toLowerCase())
-    config.redactResponseHeaders = config.redactResponseHeaders?.map((header) => header.toLowerCase())
-    this.config = Object.assign({}, configDefaults, config)
+  constructor(public readonly event: WorkerEvent, protected listener: EventListener, config: InternalConfig) {
+    this.config = config
     this.tracer = new RequestTracer(event.request, this.config)
     this.waitUntilSpan = this.tracer.startChildSpan('waitUntil', 'worker')
     this.settler = new PromiseSettledCoordinator(() => {
@@ -400,7 +398,10 @@ class LogWrapper {
   }
 }
 
-export function hc(config: Config, listener: EventListener): EventListener {
+export function hc(cfg: Config, listener: EventListener): EventListener {
+  const config = Object.assign({}, configDefaults, cfg)
+  config.redactRequestHeaders = config.redactRequestHeaders.map((header) => header.toLowerCase())
+  config.redactResponseHeaders = config.redactResponseHeaders.map((header) => header.toLowerCase())
   return new Proxy(listener, {
     apply: function (_target, _thisArg, argArray) {
       const event = argArray[0] as WorkerEvent
