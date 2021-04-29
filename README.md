@@ -4,6 +4,7 @@ Honeycomb is an observability platform which allows you to query and graph acros
 Or you can drill into all an entire trace of a request that errored out, including all subrequests.
 
 Table of Contents
+
 - [Beta Warning](#beta-warning)
 - [Getting Started](#getting-started)
 - [Config](#config)
@@ -25,7 +26,7 @@ The next two things you need are a Honeycomb API key and a dataset name. You can
 
 Next you need to wrap your listener with the honeycomb logger. So if your current code looks something like this:
 
-``` javascript
+```javascript
 addEventListener('fetch', (event) => {
   event.respondWith(handleRequest(event.request))
 })
@@ -37,7 +38,7 @@ function handleRequest(request) {
 
 You can change that to:
 
-``` javascript
+```javascript
 import { hc } from '@cloudflare/workers-honeycomb-logger'
 
 const hc_config = {
@@ -59,23 +60,26 @@ function handleRequest(request) {
 
 The config object can take a few extra parameters to add more detail to the events that are sent to Honeycomb or configure other aspects.
 
-``` typescript
+```typescript
 interface Config {
-  apiKey: `string` //The honeycomb API Key
-  datase`: string //The name of the dataset
+  apiKey: string //The honeycomb API Key
+  datase: string //The name of the dataset
+  data?: any //Any data you want to add to every request. Things like service name, version info etc.
+  redactRequestHeaders?: string[] //Array of headers to redact. Will replace value with `REDACTED`. default is ['authorization', 'cookie', 'referer'].
+  redactResponseHeaders?: string[] //Array of headers to redact. Will replace value with `REDACTED`. default is ['set-cookie'].
   sampleRates?: SampleRates | SampleRateFn //Either an object or function that configured sampling (See below)
   data?: any //Any static data that you want to add to every request. This could be a service or the version for example.
-  parse?: (request: Request, response?: Response) => any //Add any information that requires parsing the request. customer_id, amounts of what product ordered.. 
-  parseSubrequest?: (request: Request, response?: Response) => any //Do the same for any outgoing fetch request in a trace (see below)
 }
 ```
+
+NOTE: In previous versions there were methods for parsing request and responses, but this becomes an issue when reading the body of the request or the response, so it has been removed. If you want add any information you can do so with the `tracer.addData` method described below.
 
 ### Adding logs and other data
 
 If you want to add any other data or logs to the current request, you can use the `tracer.addData(data: object)` and `tracer.log(message: string)` methods.
 You can get a reference to the tracer either on the request object, or the second argument in the listener.
 
-``` typescript
+```typescript
 async function handleRequest(request: TracerRequest) {
   request.tracer.log('handling request')
   const customer = parseCustomer(request)
@@ -93,7 +97,8 @@ Honeycomb has a concept of a trace, which is a hierarchial representatation of a
 To be able to associate the a subrequest with the correct incoming request, you will have to use the fetch defined on the tracer described above. The method on the tracer delegates all arguments to the regular fetch method, so the `tracer.fetch` function is a drop-in replacement for all `fetch` function calls.
 
 Example:
-``` typescript
+
+```typescript
 async function handleRequest(request: TracerRequest) {
   return request.tracer.fetch('https://docs.honeycomb.io/api/events/')
 }
@@ -116,7 +121,7 @@ export interface SampleRates {
 
 In an example:
 
-``` typescript
+```typescript
 const hc_config = {
   api_key: 'abcd',
   dataset: 'my-first-dataset',
@@ -125,8 +130,8 @@ const hc_config = {
     '3xx': 5,
     '4xx': 2,
     '5xx': 1,
-    exception: 1
-  }
+    exception: 1,
+  },
 }
 ```
 
