@@ -294,6 +294,8 @@ class LogWrapper {
   protected readonly config: InternalConfig
   protected readonly settler: PromiseSettledCoordinator
   constructor(public readonly event: WorkerEvent, protected listener: EventListener, config: Config) {
+    config.redactRequestHeaders = config.redactRequestHeaders?.map((header) => header.toLowerCase())
+    config.redactResponseHeaders = config.redactResponseHeaders?.map((header) => header.toLowerCase())
     this.config = Object.assign({}, configDefaults, config)
     this.tracer = new RequestTracer(event.request, this.config)
     this.waitUntilSpan = this.tracer.startChildSpan('waitUntil', 'worker')
