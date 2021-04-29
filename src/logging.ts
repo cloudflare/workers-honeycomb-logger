@@ -53,16 +53,20 @@ export interface SampleRates {
   exception: number
 }
 export interface Config {
-  dataset: string
   apiKey: string
-  sampleRates?: SampleRates | SampleRateFn
+  dataset: string
   data?: any
+  redactRequestHeaders?: string[]
+  redactResponseHeaders?: string[]
+  sampleRates?: SampleRates | SampleRateFn
   reportOverride?: (request: Request, body: object) => OrPromise<void>
 }
 
 interface InternalConfig extends Config {
-  sampleRates: (SampleRates & Record<string, number>) | SampleRateFn
   data: any
+  redactRequestHeaders: string[]
+  redactResponseHeaders: string[]
+  sampleRates: (SampleRates & Record<string, number>) | SampleRateFn
 }
 
 type OrPromise<T> = T | PromiseLike<T>
@@ -90,11 +94,13 @@ interface SpanInit {
   parentSpanId?: string
 }
 
-const convertHeaders = (from: Headers): Record<string, string> => {
+const convertHeaders = (from: Headers, redacted: string[]): Record<string, string> => {
   const to: Record<string, string> = {}
-  for (const [key, value] of from.entries()) {
-    to[key.toLowerCase()] = value
+  for (let [key, value] of from.entries()) {
+    key = key.toLowerCase()
+    to[key] = redacted.includes(key) ? 'REDACTED' : value
   }
+
   return to
 }
 
@@ -137,7 +143,7 @@ class Span {
     this.request = request
     if (!request) return
     const json = {
-      headers: request.headers ? convertHeaders(request.headers) : undefined,
+      headers: request.headers ? convertHeaders(request.headers, this.config.redactRequestHeaders) : undefined,
       method: request.method,
       redirect: request.redirect,
       referrer: request.referrer,
@@ -151,7 +157,7 @@ class Span {
     this.response = response
     if (!response) return
     const json = {
-      headers: response.headers ? convertHeaders(response.headers) : undefined,
+      headers: response.headers ? convertHeaders(response.headers, this.config.redactResponseHeaders) : undefined,
       ok: response.ok,
       redirected: response.redirected,
       status: response.status,
@@ -268,6 +274,8 @@ class RequestTracer extends Span {
 const configDefaults: InternalConfig = {
   apiKey: '',
   dataset: '',
+  redactRequestHeaders: ['authorization', 'cookie', 'referer'],
+  redactResponseHeaders: ['set-cookie'],
   sampleRates: {
     '2xx': 1,
     '3xx': 1,
