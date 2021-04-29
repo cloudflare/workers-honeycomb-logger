@@ -57,8 +57,6 @@ export interface Config {
   apiKey: string
   sampleRates?: SampleRates | SampleRateFn
   data?: any
-  parse?: (request: Request, response?: Response) => any
-  parseSubrequest?: (request: Request, response?: Response) => any
   reportOverride?: (request: Request, body: object) => OrPromise<void>
 }
 
@@ -174,11 +172,6 @@ class Span {
 
   public finish() {
     this.eventMeta.duration_ms = Date.now() - this.eventMeta.timestamp
-    if (this.isRootSpan() && this.config.parse && this.request) {
-      this.addData(this.config.parse(this.request.clone(), this.response?.clone()))
-    } else if (this.request && this.config.parseSubrequest) {
-      this.addData(this.config.parseSubrequest(this.request.clone(), this.response?.clone()))
-    }
   }
 
   public fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
