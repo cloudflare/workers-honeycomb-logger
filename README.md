@@ -1,7 +1,7 @@
-Honeycomb logger is a simple library that lets you extremely easy export runtime information from your Cloudflare Workers into [Honeycomb](https://honeycomb.io).
+Honeycomb logger is a simple library that lets you extremely easily export runtime information from your Cloudflare Workers into [Honeycomb](https://honeycomb.io).
 Honeycomb is an observability platform which allows you to query and graph across any (number of) dimension(s) you have in your data. So you can for example graph request duration for 200 response codes, for GET requests, to a particular URL, for a particular customer.
 
-Or you can drill into all an entire trace of a request that errored out, including all subrequests.
+Or you can drill into an entire trace of a request that errored out, including all subrequests.
 
 Table of Contents
 
@@ -16,7 +16,7 @@ Table of Contents
 
 ⚠️`workers-honeycomb-logger` **is currently in beta. We do not recommend using it for production workloads just yet.** ⚠️
 
-It currently only supports workers that have exactly one `EventListener` that always returns a `Response`. And we currently also support at most one `waitUntill` call. If your worker does not return a Response (to have an origin handle the request for example) or you use multiple `waitUntill()` calls, installing this will change the behaviour of your worker. (And probably for the worse). These are known issue that we will fix before doing a non-beta release.
+It currently only supports workers that have exactly one `EventListener` that always returns a `Response`. If your worker does not return a Response (to have an origin handle the request for example), installing this will change the behaviour of your worker. (And probably for the worse). These are known issue that we will fix before doing a non-beta release.
 
 ### Getting started
 
@@ -90,7 +90,7 @@ async function handleRequest(request: TracerRequest) {
 
 ### Traces
 
-Honeycomb has a concept of a trace, which is a hierarchial representatation of an event. The Cloudflare Worker Honeycomb logger supports trace events for subrequests (outgoing HTTP fetch requests in your worker) like this:
+Honeycomb has a concept of a trace, which is a hierarchial representatation of multiple, related events. The Cloudflare Worker Honeycomb logger supports trace events for subrequests (outgoing HTTP fetch requests in your worker) like this:
 
 <img width="1089" alt="Screenshot 2021-03-18 at 10 53 06 AM" src="https://user-images.githubusercontent.com/890386/111732941-ca13d200-88ca-11eb-94cb-a4f30a462788.png">
 
