@@ -117,16 +117,10 @@ class Span {
       trace: {
         trace_id: init.traceId,
         span_id: uuidv4(),
+        parent_id: init.parentSpanId,
       },
       service_name: init.serviceName,
     }
-    if (init.parentSpanId) {
-      this.eventMeta.trace.parent_id = init.parentSpanId
-    }
-  }
-
-  public isRootSpan() {
-    return !this.eventMeta.trace.parent_id
   }
 
   public toHoneycombEvents(): HoneycombEvent[] {
