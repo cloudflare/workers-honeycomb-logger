@@ -29,7 +29,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-import { v4 as uuidv4 } from 'uuid'
+import { TraceContext } from './tracecontext'
 import { PromiseSettledCoordinator } from './promises'
 
 declare global {
@@ -73,15 +73,10 @@ type OrPromise<T> = T | PromiseLike<T>
 
 type PromiseResolve<T> = (value: OrPromise<T>) => void
 
-interface TraceInfo {
-  span_id: string
-  trace_id: string
-  parent_id?: string
-}
 interface HoneycombEvent {
   timestamp: number
   name: string
-  trace: TraceInfo
+  trace: TraceContext
   service_name: string
   duration_ms?: number
   app?: any
@@ -89,9 +84,8 @@ interface HoneycombEvent {
 
 interface SpanInit {
   name: string
-  traceId: string
-  serviceName: string
-  parentSpanId?: string
+  trace_context: TraceContext
+  service_name: string
 }
 
 const convertHeaders = (from: Headers, redacted: string[]): Record<string, string> => {
@@ -114,12 +108,8 @@ class Span {
     this.eventMeta = {
       timestamp: Date.now(),
       name: init.name,
-      trace: {
-        trace_id: init.traceId,
-        span_id: uuidv4(),
-        parent_id: init.parentSpanId,
-      },
-      service_name: init.serviceName,
+      trace: init.trace_context,
+      service_name: init.service_name,
     }
   }
 
@@ -177,6 +167,9 @@ class Span {
   public fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
     const request = new Request(input, init)
     const childSpan = this.startChildSpan(request.url, 'fetch')
+    const traceHeaders = this.eventMeta.trace.getHeaders()
+    request.headers.set('traceparent', traceHeaders.traceparent)
+    if (traceHeaders.tracestate) request.headers.set('tracestate', traceHeaders.tracestate)
     childSpan.addRequest(request)
     const promise = fetch(input, init)
     promise
@@ -191,9 +184,9 @@ class Span {
     return promise
   }
 
-  public startChildSpan(name: string, serviceName: string): Span {
+  public startChildSpan(name: string, service_name: string): Span {
     const trace = this.eventMeta.trace
-    const span = new Span({ name, traceId: trace.trace_id, parentSpanId: trace.span_id, serviceName }, this.config)
+    const span = new Span({ name, trace_context: trace.getChildContext(), service_name }, this.config)
     this.childSpans.push(span)
     return span
   }
@@ -204,8 +197,8 @@ class RequestTracer extends Span {
     super(
       {
         name: 'request',
-        traceId: uuidv4(),
-        serviceName: 'worker',
+        trace_context: TraceContext.newTraceContext(request),
+        service_name: 'worker',
       },
       config,
     )
