@@ -55,7 +55,7 @@ export interface SampleRates {
 export interface Config {
   apiKey: string
   dataset: string
-  data?: any
+  data?: Object
   redactRequestHeaders?: string[]
   redactResponseHeaders?: string[]
   sampleRates?: SampleRates | SampleRateFn
@@ -64,7 +64,7 @@ export interface Config {
 }
 
 interface InternalConfig extends Config {
-  data: any
+  data: Object
   redactRequestHeaders: string[]
   redactResponseHeaders: string[]
   sampleRates: (SampleRates & Record<string, number>) | SampleRateFn
@@ -186,8 +186,9 @@ class Span {
     return promise
   }
 
-  public startChildSpan(name: string, service_name: string): Span {
+  public startChildSpan(name: string, serviceName?: string): Span {
     const trace = this.eventMeta.trace
+    const service_name = serviceName || this.eventMeta.service_name
     const span = new Span({ name, trace_context: trace.getChildContext(), service_name }, this.config)
     this.childSpans.push(span)
     return span
