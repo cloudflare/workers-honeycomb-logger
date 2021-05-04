@@ -63,10 +63,12 @@ interface Config {
   apiKey: string //The honeycomb API Key
   dataset: string //The name of the dataset
 
+  acceptTraceContext?: boolean //Do you want to accept automatic TraceContext information from clients? Defaults to 'false'
   data?: any //Any data you want to add to every request. Things like service name, version info etc.
   redactRequestHeaders?: string[] //Array of headers to redact. Will replace value with `REDACTED`. default is ['authorization', 'cookie', 'referer'].
   redactResponseHeaders?: string[] //Array of headers to redact. Will replace value with `REDACTED`. default is ['set-cookie'].
-  sampleRates?: SampleRates | SampleRateFn //Either an object or function that configured sampling (See below)
+  sampleRates?: SampleRates | SampleRateFn //Either an object or function that configured sampling ([See below](#dynamic-sampling))
+  sendTraceContext?: boolean | RegExp //set this to true to send a TraceContext with all fetch requests. With a Regex, we will check the URL against the regex first. Defaults to 'false'
   serviceName?: string //The serviceName you want to see in Honeycomb. Defaults to 'worker'
   data?: any //Any static data that you want to add to every request. This could be a service or the version for example.
 }
@@ -103,6 +105,10 @@ async function handleRequest(request: TracerRequest) {
   return request.tracer.fetch('https://docs.honeycomb.io/api/events/')
 }
 ```
+
+If you want to enable automatic distributed traces from your client to your backend, you can enable the `acceptTrace` property to participate in the trace started by your client and `sendTraceContext` to automatically send through the [TraceContext](https://www.w3.org/TR/trace-context/#examples-of-http-traceparent-headers) to your backend.
+This only works on the `fetch` methods that are defined on the `tracer` object and is compatible with any of the official Honeycomb beeline frameworks.
+Remember that you do have to use the same `dataset` for all systems to be able to assemble your trace in Honeycomb.
 
 ### Dynamic Sampling
 

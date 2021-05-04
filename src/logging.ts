@@ -55,20 +55,24 @@ export interface SampleRates {
 export interface Config {
   apiKey: string
   dataset: string
+  acceptTraceContext?: boolean
   data?: Object
   redactRequestHeaders?: string[]
   redactResponseHeaders?: string[]
   sampleRates?: SampleRates | SampleRateFn
   serviceName?: string
+  sendTraceContext?: boolean | RegExp
   reportOverride?: (request: Request, body: object) => OrPromise<void>
 }
 
 interface InternalConfig extends Config {
+  acceptTraceContext?: boolean
   data: Object
   redactRequestHeaders: string[]
   redactResponseHeaders: string[]
   sampleRates: (SampleRates & Record<string, number>) | SampleRateFn
   serviceName: string
+  sendTraceContext?: boolean | RegExp
 }
 
 type OrPromise<T> = T | PromiseLike<T>
@@ -169,9 +173,13 @@ class Span {
   public fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
     const request = new Request(input, init)
     const childSpan = this.startChildSpan(request.url, 'fetch')
-    const traceHeaders = this.eventMeta.trace.getHeaders()
-    request.headers.set('traceparent', traceHeaders.traceparent)
-    if (traceHeaders.tracestate) request.headers.set('tracestate', traceHeaders.tracestate)
+
+    if (this.config.sendTraceContext) {
+      const traceHeaders = this.eventMeta.trace.getHeaders()
+      request.headers.set('traceparent', traceHeaders.traceparent)
+      if (traceHeaders.tracestate) request.headers.set('tracestate', traceHeaders.tracestate)
+    }
+
     childSpan.addRequest(request)
     const promise = fetch(input, init)
     promise
@@ -200,7 +208,7 @@ class RequestTracer extends Span {
     super(
       {
         name: 'request',
-        trace_context: TraceContext.newTraceContext(request),
+        trace_context: TraceContext.newTraceContext(config.acceptTraceContext ? request : undefined),
         service_name: config.serviceName,
       },
       config,
