@@ -59,6 +59,7 @@ export interface Config {
   redactRequestHeaders?: string[]
   redactResponseHeaders?: string[]
   sampleRates?: SampleRates | SampleRateFn
+  serviceName?: string
   reportOverride?: (request: Request, body: object) => OrPromise<void>
 }
 
@@ -67,6 +68,7 @@ interface InternalConfig extends Config {
   redactRequestHeaders: string[]
   redactResponseHeaders: string[]
   sampleRates: (SampleRates & Record<string, number>) | SampleRateFn
+  serviceName: string
 }
 
 type OrPromise<T> = T | PromiseLike<T>
@@ -198,7 +200,7 @@ class RequestTracer extends Span {
       {
         name: 'request',
         trace_context: TraceContext.newTraceContext(request),
-        service_name: 'worker',
+        service_name: config.serviceName,
       },
       config,
     )
@@ -261,6 +263,7 @@ class RequestTracer extends Span {
 const configDefaults: InternalConfig = {
   apiKey: '',
   dataset: '',
+  data: {},
   redactRequestHeaders: ['authorization', 'cookie', 'referer'],
   redactResponseHeaders: ['set-cookie'],
   sampleRates: {
@@ -270,7 +273,7 @@ const configDefaults: InternalConfig = {
     '5xx': 1,
     exception: 1,
   },
-  data: {},
+  serviceName: 'worker',
 }
 
 class LogWrapper {

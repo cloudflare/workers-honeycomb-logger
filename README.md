@@ -68,6 +68,7 @@ interface Config {
   redactRequestHeaders?: string[] //Array of headers to redact. Will replace value with `REDACTED`. default is ['authorization', 'cookie', 'referer'].
   redactResponseHeaders?: string[] //Array of headers to redact. Will replace value with `REDACTED`. default is ['set-cookie'].
   sampleRates?: SampleRates | SampleRateFn //Either an object or function that configured sampling (See below)
+  serviceName?: string //The serviceName you want to see in Honeycomb. Defaults to 'worker'
   data?: any //Any static data that you want to add to every request. This could be a service or the version for example.
 }
 ```
