@@ -5,18 +5,16 @@ Or you can drill into an entire trace of a request that errored out, including a
 
 Table of Contents
 
-- [Beta Warning](#beta-warning)
+- [Warning](#warning)
 - [Getting Started](#getting-started)
 - [Config](#config)
 - [Adding logs and other data](#adding-logs-and-other-data)
 - [Traces](#traces)
 - [Dynamic Sampling](#dynamic-sampling)
 
-### Beta Warning!
+### Warning!
 
-⚠️`workers-honeycomb-logger` **is currently in beta. We do not recommend using it for production workloads just yet.** ⚠️
-
-It currently only supports workers that have exactly one `EventListener` that always returns a `Response`. If your worker does not return a Response (to have an origin handle the request for example), installing this will change the behaviour of your worker. (And probably for the worse). These are known issue that we will fix before doing a non-beta release.
+This library currently supports workers that have exactly one `EventListener` that always returns a `Response`. This is almost all workers, but if for some reason you have a different setup, using this library could interfere with the regular flow of your script.
 
 ### Getting started
 
@@ -43,7 +41,7 @@ import { hc } from '@cloudflare/workers-honeycomb-logger'
 
 const hc_config = {
   apiKey: '<api_key>',
-  dataset: 'my-first-dataset',
+  dataset: '<my-first-dataset>',
 }
 const listener = hc(hc_config, (event) => {
   event.respondWith(handleRequest(event.request))
@@ -63,7 +61,8 @@ The config object can take a few extra parameters to add more detail to the even
 ```typescript
 interface Config {
   apiKey: string //The honeycomb API Key
-  datase: string //The name of the dataset
+  dataset: string //The name of the dataset
+
   data?: any //Any data you want to add to every request. Things like service name, version info etc.
   redactRequestHeaders?: string[] //Array of headers to redact. Will replace value with `REDACTED`. default is ['authorization', 'cookie', 'referer'].
   redactResponseHeaders?: string[] //Array of headers to redact. Will replace value with `REDACTED`. default is ['set-cookie'].
@@ -138,4 +137,5 @@ const hc_config = {
 
 This configures the library to only send 1 in 10 requests with a response code in the 200s, but keep all errors; both 500s and exceptions.
 
-If you want more fine-grained control over your sampling, you are supply a function that takes both a `Request` and optionally a `Response` and you can return a number, which is the amount of events this request should represent.
+If you want more fine-grained control over your sampling, you can supply a function that takes both a `Request` and optionally a `Response` and you can return a number, which is the amount of events this request should represent.
+Please note it is not possible to read the body of the Request or Response objects, just their headers and status codes.
