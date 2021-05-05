@@ -44,8 +44,9 @@ declare global {
 
 export type WorkerEvent = FetchEvent
 
-export type SampleRateFn = (request: Request, response?: Response) => number
+export type SampleRateFn = (data: any) => number
 export interface SampleRates {
+  '1xx': number
   '2xx': number
   '3xx': number
   '4xx': number
@@ -56,7 +57,7 @@ export interface Config {
   apiKey: string
   dataset: string
   acceptTraceContext?: boolean
-  data?: Object
+  data?: object
   redactRequestHeaders?: string[]
   redactResponseHeaders?: string[]
   sampleRates?: SampleRates | SampleRateFn
@@ -67,7 +68,7 @@ export interface Config {
 
 interface InternalConfig extends Config {
   acceptTraceContext: boolean
-  data: Object
+  data: object
   redactRequestHeaders: string[]
   redactResponseHeaders: string[]
   sampleRates: (SampleRates & Record<string, number>) | SampleRateFn
@@ -85,7 +86,6 @@ interface HoneycombEvent {
   trace: TraceContext
   service_name: string
   duration_ms?: number
-  app?: any
 }
 
 interface SpanInit {
@@ -226,8 +226,8 @@ class RequestTracer extends Span {
   }
 
   public async sendEvents(excludeSpans?: string[]) {
-    const sampleRate = this.getSampleRate(this.request, this.response)
-    if (Math.random() < 1 / sampleRate) {
+    const sampleRate = this.getSampleRate(this.data)
+    if (sampleRate >= 1 && Math.random() < 1 / sampleRate) {
       const events = this.toHoneycombEvents().filter((event) =>
         excludeSpans ? !excludeSpans.includes(event.name) : true,
       )
@@ -264,14 +264,14 @@ class RequestTracer extends Span {
     }
   }
 
-  private getSampleRate(request: Request, response?: Response): number {
+  private getSampleRate(data: any): number {
     const sampleRates = this.config.sampleRates
     if (typeof sampleRates === 'function') {
-      return sampleRates(request, response)
-    } else if (!response) {
+      return sampleRates(data)
+    } else if (!data.response) {
       return sampleRates.exception
     } else {
-      const key = `${response.status.toString()[0]}xx`
+      const key = `${data.response.status.toString()[0]}xx`
       return sampleRates[key]
     }
   }
@@ -285,6 +285,7 @@ const configDefaults: InternalConfig = {
   redactRequestHeaders: ['authorization', 'cookie', 'referer'],
   redactResponseHeaders: ['set-cookie'],
   sampleRates: {
+    '1xx': 1,
     '2xx': 1,
     '3xx': 1,
     '4xx': 1,
