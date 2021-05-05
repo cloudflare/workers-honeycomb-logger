@@ -1,3 +1,4 @@
+require('dotenv').config()
 const child_process = require('child_process')
 const path = require('path')
 const webpack = require('webpack')
@@ -33,6 +34,7 @@ module.exports = {
     new webpack.EnvironmentPlugin({
       GIT_VERSION: git('describe --always'),
       GIT_AUTHOR_DATE: git('log -1 --format=%aI'),
+      ...process.env,
     }),
   ],
 }
