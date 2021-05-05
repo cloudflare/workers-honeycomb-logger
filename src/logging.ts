@@ -104,6 +104,14 @@ const convertHeaders = (from: Headers, redacted: string[]): Record<string, strin
   return to
 }
 
+const shouldSendTraceContext = (sendTraceContext: boolean | RegExp, url: string): boolean => {
+  if (sendTraceContext instanceof RegExp) {
+    return url.match(sendTraceContext) !== null
+  } else {
+    return sendTraceContext
+  }
+}
+
 class Span {
   protected readonly eventMeta: HoneycombEvent
   protected readonly data: any = {}
@@ -174,7 +182,7 @@ class Span {
     const request = new Request(input, init)
     const childSpan = this.startChildSpan(request.url, 'fetch')
 
-    if (this.config.sendTraceContext) {
+    if (shouldSendTraceContext(this.config.sendTraceContext, request.url)) {
       const traceHeaders = this.eventMeta.trace.getHeaders()
       request.headers.set('traceparent', traceHeaders.traceparent)
       if (traceHeaders.tracestate) request.headers.set('tracestate', traceHeaders.tracestate)
