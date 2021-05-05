@@ -66,13 +66,13 @@ export interface Config {
 }
 
 interface InternalConfig extends Config {
-  acceptTraceContext?: boolean
+  acceptTraceContext: boolean
   data: Object
   redactRequestHeaders: string[]
   redactResponseHeaders: string[]
   sampleRates: (SampleRates & Record<string, number>) | SampleRateFn
   serviceName: string
-  sendTraceContext?: boolean | RegExp
+  sendTraceContext: boolean | RegExp
 }
 
 type OrPromise<T> = T | PromiseLike<T>
@@ -270,6 +270,7 @@ class RequestTracer extends Span {
 }
 
 const configDefaults: InternalConfig = {
+  acceptTraceContext: false,
   apiKey: '',
   dataset: '',
   data: {},
@@ -282,6 +283,7 @@ const configDefaults: InternalConfig = {
     '5xx': 1,
     exception: 1,
   },
+  sendTraceContext: false,
   serviceName: 'worker',
 }
 
