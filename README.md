@@ -70,7 +70,6 @@ interface Config {
   sampleRates?: SampleRates | SampleRateFn //Either an object or function that configured sampling ([See below](#dynamic-sampling))
   sendTraceContext?: boolean | RegExp //set this to true to send a TraceContext with all fetch requests. With a Regex, we will check the URL against the regex first. Defaults to 'false'
   serviceName?: string //The serviceName you want to see in Honeycomb. Defaults to 'worker'
-  data?: any //Any static data that you want to add to every request. This could be a service or the version for example.
 }
 ```
 
@@ -115,8 +114,11 @@ Remember that you do have to use the same `dataset` for all systems to be able t
 One of the challenges with storing all this information per request is that when you scale that up to past tens of millions of requests as month, it becomes more and more expensive. But at the same time you are almost certainly not very interested in the vast majority of the events. Which is why Honeycomb supports sampling. Sending only a portion of the events there. The problem with doing simple sampling (like sending only 1 in 10 requests for example), is that you lose a lot of events that happen rarely. So Honeycomb and this library support dynamic sampling.
 The easiest sampling that you can configure is by response code. So you can configure to keep only 1 in 10 responses code 200s, and keep all 5xx.
 
+The number is technically how many requests it is representative for. An easier way to remember is that a request has a 1/x chance to be sampled.
+
 ```typescript
 export interface SampleRates {
+  '1xx': number
   '2xx': number
   '3xx': number
   '4xx': number
@@ -132,6 +134,7 @@ const hc_config = {
   api_key: 'abcd',
   dataset: 'my-first-dataset',
   sampleRates: {
+    '1xx': 20,
     '2xx': 10,
     '3xx': 5,
     '4xx': 2,
@@ -143,5 +146,22 @@ const hc_config = {
 
 This configures the library to only send 1 in 10 requests with a response code in the 200s, but keep all errors; both 500s and exceptions.
 
-If you want more fine-grained control over your sampling, you can supply a function that takes both a `Request` and optionally a `Response` and you can return a number, which is the amount of events this request should represent.
-Please note it is not possible to read the body of the Request or Response objects, just their headers and status codes.
+If you want more fine grained control over what is sampled, you can supply a function that takes the entire `data` object of the outer event.
+This is the exact object that will be sent to Honeycomb, so you can see what values are available there.
+This includes all information that you have added with `request.tracer.addData()`
+
+Examples
+
+```typescript
+function sampleRates(data: any): number {
+  if (data.request.url.contains('/healthcheck')) {
+    return 0
+  } else if (data.customer.plan === 'enterprise') {
+    return 5
+  } else if (data.response.ok === true) {
+    return 20
+  } else {
+    return 1
+  }
+}
+```
