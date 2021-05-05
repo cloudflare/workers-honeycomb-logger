@@ -128,7 +128,7 @@ class Span {
   }
 
   public toHoneycombEvents(): HoneycombEvent[] {
-    const event: HoneycombEvent = Object.assign({}, this.eventMeta, { app: this.data })
+    const event: HoneycombEvent = Object.assign({}, this.data, this.eventMeta)
     const childEvents = this.childSpans.map((span) => span.toHoneycombEvents()).flat(1)
     return [event, ...childEvents]
   }
