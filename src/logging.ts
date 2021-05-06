@@ -183,7 +183,7 @@ class Span {
     const childSpan = this.startChildSpan(request.url, 'fetch')
 
     if (shouldSendTraceContext(this.config.sendTraceContext, request.url)) {
-      const traceHeaders = this.eventMeta.trace.getHeaders()
+      const traceHeaders = childSpan.eventMeta.trace.getHeaders()
       request.headers.set('traceparent', traceHeaders.traceparent)
       if (traceHeaders.tracestate) request.headers.set('tracestate', traceHeaders.tracestate)
     }
