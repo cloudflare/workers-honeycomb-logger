@@ -18,15 +18,6 @@ export interface Config {
 
 export type ResolvedConfig = Required<Config>
 
-const defaultSampleRates: SampleRates = {
-  '1xx': 1,
-  '2xx': 1,
-  '3xx': 1,
-  '4xx': 1,
-  '5xx': 1,
-  exception: 1,
-}
-
 const configDefaults: ResolvedConfig = {
   acceptTraceContext: false,
   apiKey: '',
@@ -34,7 +25,7 @@ const configDefaults: ResolvedConfig = {
   data: {},
   redactRequestHeaders: ['authorization', 'cookie', 'referer'],
   redactResponseHeaders: ['set-cookie'],
-  sampleRates: defaultSampleRates,
+  sampleRates: () => 1,
   sendTraceContext: false,
   serviceName: 'worker',
 }
