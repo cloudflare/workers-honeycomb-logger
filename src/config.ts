@@ -4,19 +4,19 @@ export type HttpStatusBuckets = '1xx' | '2xx' | '3xx' | '4xx' | '5xx' | 'excepti
 
 export type SampleRates = Record<HttpStatusBuckets, number>
 
-export interface Config {
+export type ResolvedConfig = {
+  acceptTraceContext: boolean
   apiKey: string
+  data: object
   dataset: string
-  acceptTraceContext?: boolean
-  data?: object
-  redactRequestHeaders?: string[]
-  redactResponseHeaders?: string[]
-  sampleRates?: SampleRates | SampleRateFn
-  serviceName?: string
-  sendTraceContext?: boolean | RegExp
+  redactRequestHeaders: string[]
+  redactResponseHeaders: string[]
+  sampleRates: SampleRates | SampleRateFn
+  serviceName: string
+  sendTraceContext: boolean | RegExp
 }
 
-export type ResolvedConfig = Required<Config>
+export type Config = Partial<ResolvedConfig>
 
 const configDefaults: ResolvedConfig = {
   acceptTraceContext: false,
