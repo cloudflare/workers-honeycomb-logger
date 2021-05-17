@@ -16,6 +16,8 @@ const config = {
 
 async function handleRequest(request) {
   await request.tracer.fetch('https://docs.honeycomb.io')
+  request.tracer.addData({ blah: true })
+  request.tracer.log('Hello World!')
   return request.tracer.fetch('https://docs.honeycomb.io/api/events/')
 }
 
