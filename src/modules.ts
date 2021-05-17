@@ -13,7 +13,7 @@ export function wrapModule(cfg: Config, mod: WorkerModule): WorkerModule {
   const config = resolve(cfg)
   return {
     fetch: new Proxy(mod.fetch, {
-      apply: (target, thisArg, argArray) => {
+      apply: (target, thisArg, argArray): Promise<Response> => {
         const request = argArray[0] as Request
         const ctx = argArray[2] as WorkerContext
         const tracer = new RequestTracer(request, config)
@@ -25,7 +25,7 @@ export function wrapModule(cfg: Config, mod: WorkerModule): WorkerModule {
           if (result instanceof Response) {
             tracer.finishResponse(result)
             ctx.waitUntil(tracer.sendEvents())
-            return result
+            return Promise.resolve(result)
           } else {
             result.then((response) => {
               tracer.finishResponse(response)
@@ -37,6 +37,7 @@ export function wrapModule(cfg: Config, mod: WorkerModule): WorkerModule {
               ctx.waitUntil(tracer.sendEvents())
               throw err
             })
+            return result
           }
         } catch (err) {
           tracer.finishResponse(undefined, err)
