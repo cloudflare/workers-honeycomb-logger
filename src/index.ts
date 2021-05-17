@@ -32,3 +32,4 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 export * from './config'
 export * from './logging'
 export * from './classic'
+export * from './modules'
