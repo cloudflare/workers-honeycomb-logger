@@ -29,8 +29,8 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+import { HttpStatusBuckets, ResolvedConfig } from './config'
 import { TraceContext } from './tracecontext'
-import { PromiseSettledCoordinator } from './promises'
 
 declare global {
   interface FetchEvent {
@@ -41,44 +41,6 @@ declare global {
     tracer: Span
   }
 }
-
-export type WorkerEvent = FetchEvent
-
-export type SampleRateFn = (data: any) => number
-export interface SampleRates {
-  '1xx': number
-  '2xx': number
-  '3xx': number
-  '4xx': number
-  '5xx': number
-  exception: number
-}
-export interface Config {
-  apiKey: string
-  dataset: string
-  acceptTraceContext?: boolean
-  data?: object
-  redactRequestHeaders?: string[]
-  redactResponseHeaders?: string[]
-  sampleRates?: SampleRates | SampleRateFn
-  serviceName?: string
-  sendTraceContext?: boolean | RegExp
-  reportOverride?: (request: Request, body: object) => OrPromise<void>
-}
-
-interface InternalConfig extends Config {
-  acceptTraceContext: boolean
-  data: object
-  redactRequestHeaders: string[]
-  redactResponseHeaders: string[]
-  sampleRates: (SampleRates & Record<string, number>) | SampleRateFn
-  serviceName: string
-  sendTraceContext: boolean | RegExp
-}
-
-type OrPromise<T> = T | PromiseLike<T>
-
-type PromiseResolve<T> = (value: OrPromise<T>) => void
 
 interface HoneycombEvent {
   timestamp: number
@@ -112,13 +74,13 @@ const shouldSendTraceContext = (sendTraceContext: boolean | RegExp, url: string)
   }
 }
 
-class Span {
+export class Span {
   protected readonly eventMeta: HoneycombEvent
   protected readonly data: any = {}
   protected readonly childSpans: Span[] = []
   protected request?: Request
   protected response?: Response
-  protected constructor(init: SpanInit, protected readonly config: InternalConfig) {
+  protected constructor(init: SpanInit, protected readonly config: ResolvedConfig) {
     this.eventMeta = {
       timestamp: Date.now(),
       name: init.name,
@@ -211,8 +173,8 @@ class Span {
   }
 }
 
-class RequestTracer extends Span {
-  constructor(protected readonly request: Request, config: InternalConfig) {
+export class RequestTracer extends Span {
+  constructor(protected readonly request: Request, config: ResolvedConfig) {
     super(
       {
         name: 'request',
@@ -254,168 +216,22 @@ class RequestTracer extends Span {
       },
     }
     const request = new Request(url, params)
-    if (this.config.reportOverride) {
-      await this.config.reportOverride(request, body)
-    } else {
-      const response = await fetch(request)
-      console.log('Honeycomb Response Status: ' + response.status)
-      const text = await response.text()
-      console.log('Response: ' + text)
-    }
+    const response = await fetch(request)
+    console.log('Honeycomb Response Status: ' + response.status)
+    const text = await response.text()
+    console.log('Response: ' + text)
   }
 
   private getSampleRate(data: any): number {
     const sampleRates = this.config.sampleRates
     if (typeof sampleRates === 'function') {
       return sampleRates(data)
-    } else if (!data.response) {
+    } else if (!data.response && !data.response.status) {
       return sampleRates.exception
     } else {
-      const key = `${data.response.status.toString()[0]}xx`
-      return sampleRates[key]
+      const key = `${data.response.status.toString()[0]}xx` as HttpStatusBuckets
+      const sampleRate = sampleRates[key]
+      return sampleRate || 1
     }
   }
-}
-
-const configDefaults: InternalConfig = {
-  acceptTraceContext: false,
-  apiKey: '',
-  dataset: '',
-  data: {},
-  redactRequestHeaders: ['authorization', 'cookie', 'referer'],
-  redactResponseHeaders: ['set-cookie'],
-  sampleRates: {
-    '1xx': 1,
-    '2xx': 1,
-    '3xx': 1,
-    '4xx': 1,
-    '5xx': 1,
-    exception: 1,
-  },
-  sendTraceContext: false,
-  serviceName: 'worker',
-}
-
-class LogWrapper {
-  protected waitUntilResolve?: PromiseResolve<void>
-  protected readonly tracer: RequestTracer
-  protected waitUntilSpan: Span
-  protected waitUntilUsed: boolean = false
-  protected readonly config: InternalConfig
-  protected readonly settler: PromiseSettledCoordinator
-  constructor(public readonly event: WorkerEvent, protected listener: EventListener, config: InternalConfig) {
-    this.config = config
-    this.tracer = new RequestTracer(event.request, this.config)
-    this.waitUntilSpan = this.tracer.startChildSpan('waitUntil', 'worker')
-    this.settler = new PromiseSettledCoordinator(() => {
-      this.waitUntilSpan.finish()
-      this.sendEvents()
-    })
-    this.setupWaitUntil()
-    this.setUpRespondWith()
-  }
-
-  protected async sendEvents(): Promise<void> {
-    const excludes = this.waitUntilUsed ? [] : ['waitUntil']
-    await this.tracer.sendEvents(excludes)
-    this.waitUntilResolve!()
-  }
-
-  protected finishResponse(response?: Response, error?: Error) {
-    if (response) {
-      this.tracer.addResponse(response)
-    } else if (error) {
-      this.tracer.addData({ exception: true, responseException: error.toString() })
-      if (error.stack) this.tracer.addData({ stacktrace: error.stack })
-    }
-    this.tracer.finish()
-  }
-
-  protected startWaitUntil() {
-    this.waitUntilUsed = true
-    this.waitUntilSpan.start()
-  }
-
-  protected finishWaitUntil(error?: Error) {
-    if (error) {
-      this.tracer.addData({ exception: true, waitUtilException: error.toString() })
-      this.waitUntilSpan.addData({ exception: error })
-      if (error.stack) this.waitUntilSpan!.addData({ stacktrace: error.stack })
-    }
-  }
-
-  private setupWaitUntil(): void {
-    const waitUntilPromise = new Promise<void>((resolve) => {
-      this.waitUntilResolve = resolve
-    })
-    this.event.waitUntil(waitUntilPromise)
-    this.proxyWaitUntil()
-  }
-
-  private proxyWaitUntil() {
-    const logger = this
-    this.event.waitUntil = new Proxy(this.event.waitUntil, {
-      apply: function (_target, _thisArg, argArray) {
-        logger.startWaitUntil()
-        const promise: Promise<any> = Promise.resolve(argArray[0])
-        logger.settler.addPromise(promise)
-        promise
-          .then(() => {
-            logger.finishWaitUntil()
-          })
-          .catch((reason?) => {
-            logger.finishWaitUntil(reason)
-          })
-      },
-    })
-  }
-
-  private setUpRespondWith() {
-    this.proxyRespondWith()
-    try {
-      this.event.request.tracer = this.tracer
-      this.event.waitUntilTracer = this.waitUntilSpan
-      this.listener(this.event)
-    } catch (err) {
-      this.finishResponse(undefined, err)
-    }
-  }
-
-  private proxyRespondWith() {
-    const logger = this
-    this.event.respondWith = new Proxy(this.event.respondWith, {
-      apply: function (target, thisArg, argArray) {
-        const responsePromise: Promise<Response> = Promise.resolve(argArray[0])
-        Reflect.apply(target, thisArg, argArray) //call event.respondWith with the wrapped promise
-        const promise = new Promise<Response>((resolve, reject) => {
-          responsePromise
-            .then((response) => {
-              setTimeout(() => {
-                logger.finishResponse(response)
-                resolve(response)
-              }, 1)
-            })
-            .catch((reason) => {
-              setTimeout(() => {
-                logger.finishResponse(undefined, reason)
-                reject(reason)
-              }, 1)
-            })
-        })
-        logger.settler.addPromise(promise)
-      },
-    })
-  }
-}
-
-export function hc(cfg: Config, listener: EventListener): EventListener {
-  const config = Object.assign({}, configDefaults, cfg)
-  config.redactRequestHeaders = config.redactRequestHeaders.map((header) => header.toLowerCase())
-  config.redactResponseHeaders = config.redactResponseHeaders.map((header) => header.toLowerCase())
-  return new Proxy(listener, {
-    apply: function (_target, _thisArg, argArray) {
-      const event = argArray[0] as WorkerEvent
-      new LogWrapper(event, listener, config)
-    },
-  })
 }
