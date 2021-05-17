@@ -32,16 +32,6 @@ class LogWrapper {
     this.waitUntilResolve!()
   }
 
-  protected finishResponse(response?: Response, error?: Error) {
-    if (response) {
-      this.tracer.addResponse(response)
-    } else if (error) {
-      this.tracer.addData({ exception: true, responseException: error.toString() })
-      if (error.stack) this.tracer.addData({ stacktrace: error.stack })
-    }
-    this.tracer.finish()
-  }
-
   protected startWaitUntil() {
     this.waitUntilUsed = true
     this.waitUntilSpan.start()
@@ -88,7 +78,7 @@ class LogWrapper {
       this.event.waitUntilTracer = this.waitUntilSpan
       this.listener(this.event)
     } catch (err) {
-      this.finishResponse(undefined, err)
+      this.tracer.finishResponse(undefined, err)
     }
   }
 
@@ -102,13 +92,13 @@ class LogWrapper {
           responsePromise
             .then((response) => {
               setTimeout(() => {
-                logger.finishResponse(response)
+                logger.tracer.finishResponse(response)
                 resolve(response)
               }, 1)
             })
             .catch((reason) => {
               setTimeout(() => {
-                logger.finishResponse(undefined, reason)
+                logger.tracer.finishResponse(undefined, reason)
                 reject(reason)
               }, 1)
             })

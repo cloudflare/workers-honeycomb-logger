@@ -197,6 +197,16 @@ export class RequestTracer extends Span {
     }
   }
 
+  public finishResponse(response?: Response, error?: Error) {
+    if (response) {
+      this.addResponse(response)
+    } else if (error) {
+      this.addData({ exception: true, responseException: error.toString() })
+      if (error.stack) this.addData({ stacktrace: error.stack })
+    }
+    this.finish()
+  }
+
   private async sendBatch(events: HoneycombEvent[], sampleRate: number) {
     const url = `https://api.honeycomb.io/1/batch/${encodeURIComponent(this.config.dataset)}`
     const body = events.map((event) => {
