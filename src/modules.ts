@@ -1,11 +1,16 @@
 import { Config, resolve } from './config'
 import { RequestTracer } from './logging'
 
-interface WorkerContext {
+export interface WorkerContext {
   waitUntil: (promise: Promise<any>) => void
 }
 
-interface WorkerModule {
+export interface HoneycombEnv {
+  HONEYCOMB_API_KEY?: string
+  HONEYCOMB_DATASET?: string
+}
+
+export interface WorkerModule {
   fetch: (request: Request, env: any, ctx: WorkerContext) => Response | Promise<Response>
 }
 
@@ -15,6 +20,10 @@ export function wrapModule(cfg: Config, mod: WorkerModule): WorkerModule {
     fetch: new Proxy(mod.fetch, {
       apply: (target, thisArg, argArray): Promise<Response> => {
         const request = argArray[0] as Request
+        const env = argArray[1] as HoneycombEnv
+        config.apiKey = env.HONEYCOMB_API_KEY || config.apiKey
+        config.dataset = env.HONEYCOMB_DATASET || config.dataset
+
         const ctx = argArray[2] as WorkerContext
         const tracer = new RequestTracer(request, config)
         request.tracer = tracer
