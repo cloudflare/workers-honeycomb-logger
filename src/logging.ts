@@ -174,6 +174,7 @@ export class Span {
 }
 
 export class RequestTracer extends Span {
+  public sampleRate?: number
   constructor(protected readonly request: Request, config: ResolvedConfig) {
     super(
       {
@@ -207,6 +208,10 @@ export class RequestTracer extends Span {
     this.finish()
   }
 
+  public setSampleRate(sampleRate: number) {
+    this.sampleRate = sampleRate
+  }
+
   private async sendBatch(events: HoneycombEvent[], sampleRate: number) {
     const url = `https://api.honeycomb.io/1/batch/${encodeURIComponent(this.config.dataset)}`
     const body = events.map((event) => {
@@ -233,6 +238,9 @@ export class RequestTracer extends Span {
   }
 
   private getSampleRate(data: any): number {
+    if (this.sampleRate !== undefined) {
+      return this.sampleRate
+    }
     const sampleRates = this.config.sampleRates
     if (typeof sampleRates === 'function') {
       return sampleRates(data)
@@ -240,8 +248,7 @@ export class RequestTracer extends Span {
       return sampleRates.exception
     } else {
       const key = `${data.response.status.toString()[0]}xx` as HttpStatusBuckets
-      const sampleRate = sampleRates[key]
-      return sampleRate || 1
+      return sampleRates[key] || 1
     }
   }
 }
