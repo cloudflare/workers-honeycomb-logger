@@ -10,7 +10,7 @@
     "build": "tsc",
     "prepack": "tsc"
   },
-  "license": "MIT",
+  "license": "BSD-3-Clause",
   "dependencies": {
     "@cloudflare/workers-types": "^2.2.1",
     "@types/uuid": "^8.3.0",
