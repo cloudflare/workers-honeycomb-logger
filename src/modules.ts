@@ -30,7 +30,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 import { Config, resolve, ResolvedConfig } from './config'
-import { RequestTracer, Span } from './logging'
+import { RequestTracer } from './logging'
 
 export interface WorkerContext {
   waitUntil: (promise: Promise<any>) => void
@@ -45,24 +45,19 @@ export interface WorkerModule {
   fetch: (request: Request, env: any, ctx: WorkerContext) => Response | Promise<Response>
 }
 
-function prepRequest(request: Request, childSpan: Span) {
-  const traceHeaders = childSpan.eventMeta.trace.getHeaders()
-  request.headers.set('traceparent', traceHeaders.traceparent)
-  if (traceHeaders.tracestate) request.headers.set('tracestate', traceHeaders.tracestate)
-
-  childSpan.addRequest(request)
-}
-
 function proxyFetch(do_name: string, tracer: RequestTracer, obj: DurableObject): DurableObject['fetch'] {
-  tracer.log(`proxying fetch: ${do_name}, ${typeof obj}`)
   return new Proxy(obj.fetch, {
     apply: (target, thisArg, argArray) => {
-      tracer.log(`fetch called. Wrapping it`)
       const info = argArray[0] as RequestInfo
       const input = argArray[1] as RequestInit
       const request = new Request(info, input)
       const childSpan = tracer.startChildSpan(request.url, do_name)
-      prepRequest(request, childSpan)
+
+      const traceHeaders = childSpan.eventMeta.trace.getHeaders()
+      request.headers.set('traceparent', traceHeaders.traceparent)
+      if (traceHeaders.tracestate) request.headers.set('tracestate', traceHeaders.tracestate)
+
+      childSpan.addRequest(request)
       const promise = Reflect.apply(target, thisArg, [request]) as Promise<Response>
       promise
         .then((response) => {
@@ -79,10 +74,8 @@ function proxyFetch(do_name: string, tracer: RequestTracer, obj: DurableObject):
 }
 
 function proxyGet(fn: Function, tracer: RequestTracer, do_name: string) {
-  tracer.log(`proxying Get: ${fn}`)
   return new Proxy(fn, {
     apply: (target, thisArg, argArray) => {
-      tracer.log(`proxyGet called`)
       const obj = Reflect.apply(target, thisArg, argArray)
       obj.fetch = proxyFetch(do_name, tracer, obj)
       return obj
@@ -91,10 +84,8 @@ function proxyGet(fn: Function, tracer: RequestTracer, do_name: string) {
 }
 
 function proxyNS(dns: DurableObjectNamespace, tracer: RequestTracer, do_name: string) {
-  tracer.log(`proxying NS: ${do_name}`)
   return new Proxy(dns, {
     get: (target, prop, receiver) => {
-      tracer.log(`NS get: ${prop.toString()}`)
       const value = Reflect.get(target, prop, receiver)
       if (prop === 'get') {
         return proxyGet(value, tracer, do_name).bind(dns)
@@ -106,10 +97,8 @@ function proxyNS(dns: DurableObjectNamespace, tracer: RequestTracer, do_name: st
 }
 
 function proxyEnv(env: any, tracer: RequestTracer): any {
-  console.log(`proxying Env`)
   return new Proxy(env, {
     get: (target, prop, receiver) => {
-      tracer.log(`Env get: ${prop.toString()}`)
       const value = Reflect.get(target, prop, receiver)
       if (value && value.idFromName) {
         return proxyNS(value, tracer, prop.toString())
@@ -120,7 +109,7 @@ function proxyEnv(env: any, tracer: RequestTracer): any {
   })
 }
 
-function moduleProxy(config: ResolvedConfig, mod: WorkerModule): WorkerModule {
+function workerProxy(config: ResolvedConfig, mod: WorkerModule): WorkerModule {
   return {
     fetch: new Proxy(mod.fetch, {
       apply: (target, thisArg, argArray): Promise<Response> => {
@@ -167,13 +156,60 @@ function moduleProxy(config: ResolvedConfig, mod: WorkerModule): WorkerModule {
   }
 }
 
-export function wrapModule(cfg: Config, mod: WorkerModule): WorkerModule {
-  const config = resolve(cfg)
-  return moduleProxy(config, mod)
+type ObjFetch = DurableObject['fetch']
+
+function proxyObjFetch(config: ResolvedConfig, orig_fetch: ObjFetch, do_name: string): ObjFetch {
+  return new Proxy(orig_fetch, {
+    apply: (target, thisArg, argArray): Promise<Response> => {
+      const request = argArray[0] as Request
+
+      const tracer = new RequestTracer(request, config)
+      tracer.eventMeta.service_name = do_name
+      tracer.eventMeta.name = new URL(request.url).pathname
+      request.tracer = tracer
+      try {
+        const result: Response | Promise<Response> = Reflect.apply(target, thisArg, argArray)
+        if (result instanceof Response) {
+          tracer.finishResponse(result)
+          tracer.sendEvents()
+          return Promise.resolve(result)
+        } else {
+          result.then((response) => {
+            tracer.finishResponse(response)
+            tracer.sendEvents()
+            return response
+          })
+          result.catch((err) => {
+            tracer.finishResponse(undefined, err)
+            tracer.sendEvents()
+            throw err
+          })
+          return result
+        }
+      } catch (err) {
+        tracer.finishResponse(undefined, err)
+        tracer.sendEvents()
+        throw err
+      }
+    },
+  })
 }
 
-export function wrapObject(cfg: Config, obj: DurableObject): DurableObject {
+export function wrapModule(cfg: Config, mod: WorkerModule): WorkerModule {
+  const config = resolve(cfg)
+  return workerProxy(config, mod)
+}
+
+type DOClass = { new (...args: any[]): DurableObject }
+
+export function wrapDurableObject(cfg: Config, do_class: DOClass): DOClass {
   const config = resolve(cfg)
   config.acceptTraceContext = true
-  return moduleProxy(config, obj) as DurableObject
+  return new Proxy(do_class, {
+    construct: (target, argArray) => {
+      const obj = new target(...argArray)
+      obj.fetch = proxyObjFetch(config, obj.fetch, do_class.name)
+      return obj
+    },
+  })
 }
