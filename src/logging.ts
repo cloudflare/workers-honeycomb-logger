@@ -75,7 +75,7 @@ const shouldSendTraceContext = (sendTraceContext: boolean | RegExp, url: string)
 }
 
 export class Span {
-  protected readonly eventMeta: HoneycombEvent
+  public readonly eventMeta: HoneycombEvent
   protected readonly data: any = {}
   protected readonly childSpans: Span[] = []
   protected request?: Request
@@ -151,7 +151,7 @@ export class Span {
     }
 
     childSpan.addRequest(request)
-    const promise = fetch(input, init)
+    const promise = fetch(request)
     promise
       .then((response) => {
         childSpan.addResponse(response)
