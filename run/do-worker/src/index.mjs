@@ -1,9 +1,9 @@
 import isOdd from 'is-odd'
-import { wrapModule } from '../../../dist/modules'
+import { wrapDurableObject, wrapModule } from '../../../dist/modules'
 
 // In order for the workers runtime to find the class that implements
 // our Durable Object namespace, we must export it from the root module.
-export { Counter } from './counter.mjs'
+import { Counter as counter_do } from './counter.mjs'
 
 const worker = {
   async fetch(request, env) {
@@ -30,4 +30,6 @@ const config = {
   dataset: 'my-first-dataset',
 }
 
+const Counter = wrapDurableObject(config, counter_do)
 export default wrapModule(config, worker)
+export { Counter }
