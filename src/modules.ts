@@ -90,7 +90,7 @@ function proxyNS(dns: DurableObjectNamespace, tracer: RequestTracer, do_name: st
       if (prop === 'get') {
         return proxyGet(value, tracer, do_name).bind(dns)
       } else {
-        return value.bind(dns)
+        return value ? value.bind(dns) : undefined
       }
     },
   })
