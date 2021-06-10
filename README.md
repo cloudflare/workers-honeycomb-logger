@@ -1,20 +1,22 @@
-Honeycomb logger is a simple library that lets you extremely easily export runtime information from your Cloudflare Workers into [Honeycomb](https://honeycomb.io).
+Honeycomb logger is a simple library that lets you extremely easily export runtime information from your [Cloudflare Workers](https://workers.cloudflare.com/) into [Honeycomb](https://honeycomb.io).
 Honeycomb is an observability platform which allows you to query and graph across any (number of) dimension(s) you have in your data. So you can for example graph request duration for 200 response codes, for GET requests, to a particular URL, for a particular customer.
 
 Or you can drill into an entire trace of a request that errored out, including all subrequests.
 
+
+
 Table of Contents
 
-- [Warning](#warning)
+- [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
 - [Config](#config)
 - [Adding logs and other data](#adding-logs-and-other-data)
 - [Traces](#traces)
 - [Dynamic Sampling](#dynamic-sampling)
 
-### Warning!
+### Prerequisites
 
-This library currently supports workers that have exactly one `EventListener` that always returns a `Response`. This is almost all workers, but if for some reason you have a different setup, using this library could interfere with the regular flow of your script.
+This script does not yet work for scheduled workers. It supports both Workers in both the `addEventListener` and module syntaxes, including Durable Objects. For more information on Durable Object support, see below.
 
 ### Getting started
 
@@ -22,7 +24,11 @@ Installation is done via the usual `npm install @cloudflare/workers-honeycomb-lo
 
 The next two things you need are a Honeycomb API key and a dataset name. You can pick any dataset name you like, Honeycomb will automatically create a new dataset if it sees a new name.
 
-Next you need to wrap your listener with the honeycomb logger. So if your current code looks something like this:
+The next step depends on if you are using the `addEventListener` format or the new module format (required for Durable Objects)
+
+#### AddEventListener configuration
+
+To configure the package, you need to wrap your listener with the honeycomb logger. So if your current code looks something like this:
 
 ```javascript
 addEventListener('fetch', (event) => {
@@ -52,6 +58,39 @@ addEventListener('fetch', listener)
 function handleRequest(request) {
   //your worker code.
 }
+```
+
+You are now good to go. Read through the config section to see what else you can configure.
+
+#### Module syntax configuration
+
+If you are using the module syntax, the setup is slightly different. But you still have to wrap the worker.
+
+If your code was something like this:
+
+```
+export default {
+  async fetch(request, env, ctx) {
+    return new Response('Hello world!', { status: 200 })
+  },
+}
+``` 
+
+You would change that to something like:
+
+```
+const worker = {
+  async fetch(request, env, ctx) {
+    return new Response('Hello world!', { status: 200 })
+  },
+}
+
+const config = {
+  apiKey: '__HONEYCOMB_API_KEY__',
+  dataset: 'my-first-dataset',
+}
+
+export default wrapModule(config, worker)
 ```
 
 ### Config
