@@ -7,6 +7,9 @@ Table of Contents
 
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
+  - [AddEventListener configuration](#addeventlistener-configuration)
+  - [Module syntax configuration](#module-syntax-configuration)
+  - [Durable Object configuration](#durable-object-configuration)
 - [Config](#config)
 - [Adding logs and other data](#adding-logs-and-other-data)
 - [Traces](#traces)
