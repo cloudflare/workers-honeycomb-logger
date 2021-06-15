@@ -3,8 +3,6 @@ Honeycomb is an observability platform which allows you to query and graph acros
 
 Or you can drill into an entire trace of a request that errored out, including all subrequests.
 
-
-
 Table of Contents
 
 - [Prerequisites](#prerequisites)
@@ -16,7 +14,7 @@ Table of Contents
 
 ### Prerequisites
 
-This script does not yet work for scheduled workers. It supports both Workers in both the `addEventListener` and module syntaxes, including Durable Objects. For more information on Durable Object support, see below.
+This script does not yet work for scheduled workers. It supports Workers in both the `addEventListener` and module syntaxes, including Durable Objects. For more information on Durable Object support, see below.
 
 ### Getting started
 
@@ -61,6 +59,7 @@ function handleRequest(request) {
 ```
 
 You are now good to go. Read through the config section to see what else you can configure.
+If you run into any problems, here is a [full example of an addEventListener configured worker](https://github.com/cloudflare/workers-honeycomb-logger/blob/main/run/worker/src/index.js)
 
 #### Module syntax configuration
 
@@ -68,17 +67,17 @@ If you are using the module syntax, the setup is slightly different. But you sti
 
 If your code was something like this:
 
-```
+```javascript
 export default {
   async fetch(request, env, ctx) {
     return new Response('Hello world!', { status: 200 })
   },
 }
-``` 
+```
 
 You would change that to something like:
 
-```
+```javascript
 const worker = {
   async fetch(request, env, ctx) {
     return new Response('Hello world!', { status: 200 })
@@ -92,6 +91,37 @@ const config = {
 
 export default wrapModule(config, worker)
 ```
+
+You are now good to go. Read through the config section to see what else you can configure.
+If you run into any problems, here is a [full example of a module syntax configured worker](https://github.com/cloudflare/workers-honeycomb-logger/blob/main/run/module-worker/src/index.mjs)
+
+#### Durable Object configuration
+
+If you are using Durable Objects, we support automatic distributed tracing across both your workers and your Durable Objects.
+You need to wrap your Worker code with the [module system configuration](#module-syntax-configuration) above, and then wrap your durable object as well.
+
+You can do it like this:
+
+```javascript
+import { Counter as counter_do } from './counter.mjs'
+
+const worker = {
+  async fetch(request, env) {
+    // handleRequest
+  },
+}
+
+const config = {
+  apiKey: '__HONEYCOMB_API_KEY__',
+  dataset: 'my-first-dataset',
+}
+
+const Counter = wrapDurableObject(config, counter_do)
+export default wrapModule(config, worker)
+export { Counter }
+```
+
+If you run into any problems, here is a [full example of a durable object configured worker](https://github.com/cloudflare/workers-honeycomb-logger/blob/main/run/do-worker/src/index.mjs)
 
 ### Config
 
@@ -204,3 +234,6 @@ function sampleRates(data: any): number {
   }
 }
 ```
+
+The one caveat with sampling and distributed tracing is that if you sample in both/all systems independently of one another, that it
+becomes likely that you will get partial traces. This is currently also true for Durable Objects, although we have ideas on how to fix that.
