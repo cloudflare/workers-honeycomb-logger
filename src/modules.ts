@@ -42,7 +42,7 @@ export interface HoneycombEnv {
 }
 
 export interface WorkerModule {
-  fetch: (request: Request, env: any, ctx: WorkerContext) => Response | Promise<Response>
+  fetch: (request: Request, env: any, ctx: ExecutionContext) => Response | Promise<Response>
 }
 
 function proxyFetch(do_name: string, tracer: RequestTracer, obj: DurableObject): DurableObject['fetch'] {
