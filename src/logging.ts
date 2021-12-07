@@ -106,8 +106,7 @@ export class Span {
       headers: request.headers ? convertHeaders(request.headers, this.config.redactRequestHeaders) : undefined,
       method: request.method,
       redirect: request.redirect,
-      referrer: request.referrer,
-      referrerPolicy: request.referrerPolicy,
+      referrer: request.headers.get('referer'),
       url: request.url,
     }
     this.addData({ request: json })
@@ -140,7 +139,7 @@ export class Span {
     this.eventMeta.duration_ms = Date.now() - this.eventMeta.timestamp
   }
 
-  public fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
+  public fetch(input: Request, init?: RequestInit): Promise<Response> {
     const request = new Request(input, init)
     const childSpan = this.startChildSpan(request.url, 'fetch')
 

@@ -48,7 +48,7 @@ export interface WorkerModule {
 function proxyFetch(do_name: string, tracer: RequestTracer, obj: DurableObject): DurableObject['fetch'] {
   return new Proxy(obj.fetch, {
     apply: (target, thisArg, argArray) => {
-      const info = argArray[0] as RequestInfo
+      const info = argArray[0] as Request
       const input = argArray[1] as RequestInit
       const request = new Request(info, input)
       const childSpan = tracer.startChildSpan(request.url, do_name)
@@ -147,7 +147,7 @@ function workerProxy(config: ResolvedConfig, mod: WorkerModule): WorkerModule {
             return result
           }
         } catch (err) {
-          tracer.finishResponse(undefined, err)
+          tracer.finishResponse(undefined, err as Error)
           ctx.waitUntil(tracer.sendEvents())
           throw err
         }
@@ -187,7 +187,7 @@ function proxyObjFetch(config: ResolvedConfig, orig_fetch: ObjFetch, do_name: st
           return result
         }
       } catch (err) {
-        tracer.finishResponse(undefined, err)
+        tracer.finishResponse(undefined, err as Error)
         tracer.sendEvents()
         throw err
       }
