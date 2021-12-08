@@ -158,7 +158,7 @@ function proxyObjFetch(config: ResolvedConfig, orig_fetch: ObjFetch, do_name: st
       const request = argArray[0] as Request
 
       const tracer = new RequestTracer(request, config)
-      tracer.eventMeta.service_name = do_name
+      tracer.eventMeta.service.name = do_name
       tracer.eventMeta.name = new URL(request.url).pathname
       request.tracer = tracer
       try {

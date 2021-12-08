@@ -46,14 +46,18 @@ interface HoneycombEvent {
   timestamp: number
   name: string
   trace: TraceContext
-  service_name: string
+  service: {
+    name: string
+  }
   duration_ms?: number
 }
 
 interface SpanInit {
   name: string
   trace_context: TraceContext
-  service_name: string
+  service: {
+    name: string
+  }
 }
 
 const convertHeaders = (from: Headers, redacted: string[]): Record<string, string> => {
@@ -85,7 +89,7 @@ export class Span {
       timestamp: Date.now(),
       name: init.name,
       trace: init.trace_context,
-      service_name: init.service_name,
+      service: init.service,
     }
   }
 
@@ -165,8 +169,8 @@ export class Span {
 
   public startChildSpan(name: string, serviceName?: string): Span {
     const trace = this.eventMeta.trace
-    const service_name = serviceName || this.eventMeta.service_name
-    const span = new Span({ name, trace_context: trace.getChildContext(), service_name }, this.config)
+    const service = serviceName ? { name: serviceName } : this.eventMeta.service
+    const span = new Span({ name, trace_context: trace.getChildContext(), service }, this.config)
     this.childSpans.push(span)
     return span
   }
@@ -179,7 +183,9 @@ export class RequestTracer extends Span {
       {
         name: 'request',
         trace_context: TraceContext.newTraceContext(config.acceptTraceContext ? request : undefined),
-        service_name: config.serviceName,
+        service: {
+          name: config.serviceName,
+        },
       },
       config,
     )
