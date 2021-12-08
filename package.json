@@ -1,5 +1,5 @@
 {
-  "name": "workers-honeycomb-logger",
+  "name": "@cloudflare/workers-honeycomb-logger",
   "version": "2.1.0",
   "description": "Utility to log all request invocations to Honeycomb.io",
   "main": "./dist/index.js",
