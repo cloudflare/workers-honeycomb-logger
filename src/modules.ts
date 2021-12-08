@@ -37,6 +37,36 @@ export interface HoneycombEnv {
   HONEYCOMB_DATASET?: string
 }
 
+function cacheTraceId(trace_id: string): void {
+  const headers = {
+    'cache-control': 'max-age=90',
+  }
+  caches.default.put(`https://fake-trace-cache.com/${trace_id}`, new Response('Ok', { headers }))
+}
+
+async function isRealTraceRequest(trace_id: string): Promise<boolean> {
+  const response = await caches.default.match(`https://fake-trace-cache.com/${trace_id}`)
+  return !!response
+}
+
+async function sendEventToHoneycomb(request: Request, config: ResolvedConfig): Promise<Response> {
+  const event: any = await request.json()
+  if (await isRealTraceRequest(event.trace.trace_id)) {
+    const url = `https://api.honeycomb.io/1/events/${encodeURIComponent(config.dataset)}`
+    const params = {
+      method: 'POST',
+      body: JSON.stringify(event),
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'X-Honeycomb-Team': config.apiKey,
+        'X-Honeycomb-Event-Time': event.timestamp || event.Timestamp,
+      },
+    }
+    return fetch(url, params)
+  } else {
+    return new Response(`No trace found with ID: ${event.trace.trace_id}`)
+  }
 }
 
 function proxyFetch(do_name: string, tracer: RequestTracer, obj: DurableObject): DurableObject['fetch'] {
@@ -108,8 +138,15 @@ function workerProxy<T>(config: ResolvedConfig, mod: ExportedHandler<T>): Export
     fetch: new Proxy(mod.fetch!, {
       apply: (target, thisArg, argArray): Promise<Response> => {
         const request = argArray[0] as Request
+        if (new URL(request.url).pathname === '/_send_honeycomb_event') {
+          return sendEventToHoneycomb(request, config)
+        }
 
         const tracer = new RequestTracer(request, config)
+        if (tracer.eventMeta.trace.parent_id) {
+          //this is part of a distributed trace
+          cacheTraceId(tracer.eventMeta.trace.trace_id)
+        }
         request.tracer = tracer
 
         const env = argArray[1] as HoneycombEnv
