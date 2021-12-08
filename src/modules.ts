@@ -45,8 +45,13 @@ function cacheTraceId(trace_id: string): void {
 }
 
 async function isRealTraceRequest(trace_id: string): Promise<boolean> {
-  const response = await caches.default.match(`https://fake-trace-cache.com/${trace_id}`)
-  return !!response
+  const url = `https://fake-trace-cache.com/${trace_id}`
+  const response = await caches.default.match(url)
+  const found = !!response
+  if (found) {
+    caches.default.delete(url)
+  }
+  return found
 }
 
 async function sendEventToHoneycomb(request: Request, config: ResolvedConfig): Promise<Response> {
