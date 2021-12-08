@@ -32,17 +32,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import { Config, resolve, ResolvedConfig } from './config'
 import { RequestTracer } from './logging'
 
-export interface WorkerContext {
-  waitUntil: (promise: Promise<any>) => void
-}
-
 export interface HoneycombEnv {
   HONEYCOMB_API_KEY?: string
   HONEYCOMB_DATASET?: string
 }
 
-export interface WorkerModule {
-  fetch: (request: Request, env: any, ctx: ExecutionContext) => Response | Promise<Response>
 }
 
 function proxyFetch(do_name: string, tracer: RequestTracer, obj: DurableObject): DurableObject['fetch'] {
@@ -109,9 +103,9 @@ function proxyEnv(env: any, tracer: RequestTracer): any {
   })
 }
 
-function workerProxy(config: ResolvedConfig, mod: WorkerModule): WorkerModule {
+function workerProxy<T>(config: ResolvedConfig, mod: ExportedHandler<T>): ExportedHandler<T> {
   return {
-    fetch: new Proxy(mod.fetch, {
+    fetch: new Proxy(mod.fetch!, {
       apply: (target, thisArg, argArray): Promise<Response> => {
         const request = argArray[0] as Request
 
@@ -123,7 +117,7 @@ function workerProxy(config: ResolvedConfig, mod: WorkerModule): WorkerModule {
         config.apiKey = env.HONEYCOMB_API_KEY || config.apiKey
         config.dataset = env.HONEYCOMB_DATASET || config.dataset
 
-        const ctx = argArray[2] as WorkerContext
+        const ctx = argArray[2] as ExecutionContext
 
         //TODO: proxy ctx.waitUntil
 
@@ -195,7 +189,7 @@ function proxyObjFetch(config: ResolvedConfig, orig_fetch: ObjFetch, do_name: st
   })
 }
 
-export function wrapModule(cfg: Config, mod: WorkerModule): WorkerModule {
+export function wrapModule<T>(cfg: Config, mod: ExportedHandler<T>): ExportedHandler<T> {
   const config = resolve(cfg)
   return workerProxy(config, mod)
 }

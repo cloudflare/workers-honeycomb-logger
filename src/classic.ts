@@ -109,7 +109,7 @@ class LogWrapper {
       this.event.waitUntilTracer = this.waitUntilSpan
       this.listener(this.event)
     } catch (err) {
-      this.tracer.finishResponse(undefined, err)
+      this.tracer.finishResponse(undefined, err as Error)
     }
   }
 
