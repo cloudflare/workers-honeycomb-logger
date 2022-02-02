@@ -7,7 +7,7 @@ route = ""
 zone_id = ""
 
 [build]
-command = "npm install && npm run build"
+command = "yarn install && yarn run build"
 [build.upload]
 # The "modules" upload format is required for all projects that export a Durable Objects class
 format = "modules"
