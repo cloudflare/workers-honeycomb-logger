@@ -74,13 +74,15 @@ async function sendEventToHoneycomb(request: Request, config: ResolvedConfig): P
   }
 }
 
-function proxyFetch(do_name: string, tracer: RequestTracer, obj: DurableObject): DurableObject['fetch'] {
-  return new Proxy(obj.fetch, {
+type OutgoingFetcher = { fetch: typeof fetch }
+
+function proxyFetch(obj: OutgoingFetcher, tracer: RequestTracer, name: string): OutgoingFetcher {
+  obj.fetch = new Proxy(obj.fetch, {
     apply: (target, thisArg, argArray) => {
       const info = argArray[0] as Request
       const input = argArray[1] as RequestInit
       const request = new Request(info, input)
-      const childSpan = tracer.startChildSpan(request.url, do_name)
+      const childSpan = tracer.startChildSpan(request.url, name)
 
       const traceHeaders = childSpan.eventMeta.trace.getHeaders()
       request.headers.set('traceparent', traceHeaders.traceparent)
@@ -100,14 +102,14 @@ function proxyFetch(do_name: string, tracer: RequestTracer, obj: DurableObject):
       return promise
     },
   })
+  return obj
 }
 
 function proxyGet(fn: Function, tracer: RequestTracer, do_name: string) {
   return new Proxy(fn, {
     apply: (target, thisArg, argArray) => {
       const obj = Reflect.apply(target, thisArg, argArray)
-      obj.fetch = proxyFetch(do_name, tracer, obj)
-      return obj
+      return proxyFetch(obj, tracer, do_name)
     },
   })
 }
@@ -131,6 +133,8 @@ function proxyEnv(env: any, tracer: RequestTracer): any {
       const value = Reflect.get(target, prop, receiver)
       if (value && value.idFromName) {
         return proxyNS(value, tracer, prop.toString())
+      } else if (value && value.fetch) {
+        return proxyFetch(value, tracer, prop.toString())
       } else {
         return value
       }
@@ -192,9 +196,9 @@ function workerProxy<T>(config: ResolvedConfig, mod: ExportedHandler<T>): Export
   }
 }
 
-type ObjFetch = DurableObject['fetch']
+type DoFetch = DurableObject['fetch']
 
-function proxyObjFetch(config: ResolvedConfig, orig_fetch: ObjFetch, do_name: string): ObjFetch {
+function proxyObjFetch(config: ResolvedConfig, orig_fetch: DoFetch, do_name: string): DoFetch {
   return new Proxy(orig_fetch, {
     apply: (target, thisArg, argArray): Promise<Response> => {
       const request = argArray[0] as Request
