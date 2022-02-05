@@ -98,6 +98,8 @@ export default wrapModule(config, worker)
 You are now good to go. Read through the config section to see what else you can configure.
 If you run into any problems, here is a [full example of a module syntax configured worker](https://github.com/cloudflare/workers-honeycomb-logger/blob/main/run/module-worker/src/index.mjs)
 
+If you don't want to hardcode the API key manually, you can also set the environment variables `HONEYCOMB_API_KEY` and `HONEYCOMB_DATASET` and they will override whatever is inserted into `wrapModule`.
+
 #### Durable Object configuration
 
 If you are using Durable Objects, we support automatic distributed tracing across both your workers and your Durable Objects.
