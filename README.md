@@ -27,6 +27,8 @@ The next two things you need are a Honeycomb API key and a dataset name. You can
 
 The next step depends on if you are using the `addEventListener` format or the new module format (required for Durable Objects)
 
+⚠️ You also need to enable the `Automatically unpack nested JSON` setting in the dataset settings in https://ui.honeycomb.io to be able to query over all the data that is automatically included.
+
 #### AddEventListener configuration
 
 To configure the package, you need to wrap your listener with the honeycomb logger. So if your current code looks something like this:
