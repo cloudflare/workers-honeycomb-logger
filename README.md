@@ -176,7 +176,7 @@ To be able to associate the a subrequest with the correct incoming request, you 
 Example:
 
 ```typescript
-async function handleRequest(request: TracerRequest) {
+async function handleRequest(request: Request) {
   return request.tracer.fetch('https://docs.honeycomb.io/api/events/')
 }
 ```
