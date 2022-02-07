@@ -163,6 +163,10 @@ function workerProxy<T>(config: ResolvedConfig, mod: ExportedHandler<T>): Export
         config.apiKey = env.HONEYCOMB_API_KEY || config.apiKey
         config.dataset = env.HONEYCOMB_DATASET || config.dataset
 
+        if (!config.apiKey || !config.dataset) {
+          throw new Error('Need both HONEYCOMB_API_KEY and HONEYCOMB_DATASET to be configured.')
+        }
+
         const ctx = argArray[2] as ExecutionContext
 
         //TODO: proxy ctx.waitUntil
