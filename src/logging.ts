@@ -249,11 +249,15 @@ export class RequestTracer extends Span {
     const sampleRates = this.config.sampleRates
     if (typeof sampleRates === 'function') {
       return sampleRates(data)
-    } else if (!data.response && !data.response.status) {
-      return sampleRates.exception
-    } else {
+    } else if (typeof data.response === 'object' && typeof data.response.status === 'number') {
       const key = `${data.response.status.toString()[0]}xx` as HttpStatusBuckets
       return sampleRates[key] || 1
+    } else if (sampleRates.exception) {
+      // an exception occurred, always send these
+      return 1
+    } else {
+      // not a valid response and not an error, I guess we should log this?
+      return 1
     }
   }
 }
