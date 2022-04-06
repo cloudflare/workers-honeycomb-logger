@@ -143,7 +143,7 @@ export class Span {
     this.eventMeta.duration_ms = Date.now() - this.eventMeta.timestamp
   }
 
-  public fetch(input: Request, init?: RequestInit): Promise<Response> {
+  public fetch(input: RequestInfo, init?: RequestInit): Promise<Response> {
     const request = new Request(input, init)
     const childSpan = this.startChildSpan(request.url, 'fetch')
 

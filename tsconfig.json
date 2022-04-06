@@ -4,7 +4,7 @@
     "target": "es2018",
     "declaration": true,
     "outDir": "./dist",
-    "lib": ["es2020"],
+    "lib": ["es2020", "webworker"],
     "types": ["@cloudflare/workers-types"],
     "strict": true
   },
