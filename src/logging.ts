@@ -249,11 +249,11 @@ export class RequestTracer extends Span {
     const sampleRates = this.config.sampleRates
     if (typeof sampleRates === 'function') {
       return sampleRates(data)
-    } else if (!data.response && !data.response.status) {
-      return sampleRates.exception
-    } else {
+    } else if (typeof data.response === 'object' && typeof data.response.status === 'number') {
       const key = `${data.response.status.toString()[0]}xx` as HttpStatusBuckets
       return sampleRates[key] || 1
+    } else {
+      return sampleRates.exception
     }
   }
 }
