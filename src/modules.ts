@@ -208,6 +208,16 @@ function proxyObjFetch(config: ResolvedConfig, orig_fetch: DoFetch, do_name: str
       const request = argArray[0] as Request
 
       const tracer = new RequestTracer(request, config)
+
+      const env = argArray[1] as HoneycombEnv
+      argArray[1] = proxyEnv(env, tracer)
+      config.apiKey = env.HONEYCOMB_API_KEY || config.apiKey
+      config.dataset = env.HONEYCOMB_DATASET || config.dataset
+
+      if (!config.apiKey || !config.dataset) {
+        throw new Error('Need both HONEYCOMB_API_KEY and HONEYCOMB_DATASET to be configured.')
+      }
+
       tracer.eventMeta.service.name = do_name
       tracer.eventMeta.name = new URL(request.url).pathname
       request.tracer = tracer
