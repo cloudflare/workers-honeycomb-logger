@@ -237,9 +237,15 @@ export class RequestTracer extends Span {
     }
     const request = new Request(url, params)
     const response = await fetch(request)
-    console.log('Honeycomb Response Status: ' + response.status)
+    this.debugLog('Honeycomb Response Status: ' + response.status)
     const text = await response.text()
-    console.log('Response: ' + text)
+    this.debugLog('Response: ' + text)
+  }
+
+  private debugLog(msg: string) {
+    if (this.config.debugLog) {
+      console.log(msg)
+    }
   }
 
   private getSampleRate(data: any): number {
