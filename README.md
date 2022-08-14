@@ -226,6 +226,8 @@ If you want more fine grained control over what is sampled, you can supply a fun
 This is the exact object that will be sent to Honeycomb, so you can see what values are available there.
 This includes all information that you have added with `request.tracer.addData()`
 
+Please note that the `Headers` for both request and response objects are converted into a `Record<string, string>`. So if you want to check the `content-type` headers in the response, you can do `data.response.headers['content-type']`.
+
 Examples
 
 ```typescript
@@ -243,4 +245,4 @@ function sampleRates(data: any): number {
 ```
 
 The one caveat with sampling and distributed tracing is that if you sample in both/all systems independently of one another, that it
-becomes likely that you will get partial traces. This is currently also true for Durable Objects, although we have ideas on how to fix that.
+becomes likely that you will get partial traces.
