@@ -90,7 +90,7 @@ const worker = {
 }
 
 const config = {
-  apiKey: '__HONEYCOMB_API_KEY__',
+  apiKey: '__HONEYCOMB_API_KEY__',  // can also be provided by setting env var HONEYCOMB_API_KEY
   dataset: 'my-first-dataset',
 }
 
@@ -119,7 +119,7 @@ const worker = {
 }
 
 const config = {
-  apiKey: '__HONEYCOMB_API_KEY__',
+  apiKey: '__HONEYCOMB_API_KEY__', // can also be provided by setting env var HONEYCOMB_API_KEY
   dataset: 'my-first-dataset',
 }
 
@@ -136,9 +136,8 @@ The config object can take a few extra parameters to add more detail to the even
 
 ```typescript
 interface Config {
-  apiKey: string //The honeycomb API Key
-  dataset: string //The name of the dataset
-
+  apiKey?: string //The honeycomb API Key, can be specified as env var HONEYCOMB_API_KEY
+  dataset?: string //The name of the dataset, can be specified as env var HONEYCOMB_DATASET
   acceptTraceContext?: boolean //Do you want to accept automatic TraceContext information from clients? Defaults to 'false'
   data?: any //Any data you want to add to every request. Things like service name, version info etc.
   redactRequestHeaders?: string[] //Array of headers to redact. Will replace value with `REDACTED`. default is ['authorization', 'cookie', 'referer'].
@@ -146,6 +145,7 @@ interface Config {
   sampleRates?: SampleRates | SampleRateFn //Either an object or function that configured sampling ([See below](#dynamic-sampling))
   sendTraceContext?: boolean | RegExp //set this to true to send a TraceContext with all fetch requests. With a Regex, we will check the URL against the regex first. Defaults to 'false'
   serviceName?: string //The serviceName you want to see in Honeycomb. Defaults to 'worker'
+  debugLog?: boolean // console.log response info for Honeycomb requests. Defaults to true
 }
 ```
 

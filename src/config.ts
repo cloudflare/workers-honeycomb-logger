@@ -45,6 +45,7 @@ export type ResolvedConfig = {
   sampleRates: SampleRates | SampleRateFn
   serviceName: string
   sendTraceContext: boolean | RegExp
+  debugLog: boolean
 }
 
 export type Config = Partial<ResolvedConfig>
@@ -59,6 +60,7 @@ const configDefaults: ResolvedConfig = {
   sampleRates: () => 1,
   sendTraceContext: false,
   serviceName: 'worker',
+  debugLog: true,
 }
 
 function resolve(cfg: Config): ResolvedConfig {
