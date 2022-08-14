@@ -60,7 +60,7 @@ const configDefaults: ResolvedConfig = {
   sampleRates: () => 1,
   sendTraceContext: false,
   serviceName: 'worker',
-  debugLog: true,
+  debugLog: false,
 }
 
 function resolve(cfg: Config): ResolvedConfig {

@@ -90,8 +90,8 @@ const worker = {
 }
 
 const config = {
-  apiKey: '__HONEYCOMB_API_KEY__',  // can also be provided by setting env var HONEYCOMB_API_KEY
-  dataset: 'my-first-dataset',
+  apiKey: '__HONEYCOMB_API_KEY__', // can also be provided by setting env var HONEYCOMB_API_KEY
+  dataset: 'my-first-dataset', // can also be provided by setting env var HONEYCOMB_DATASET
 }
 
 export default wrapModule(config, worker)
@@ -120,7 +120,7 @@ const worker = {
 
 const config = {
   apiKey: '__HONEYCOMB_API_KEY__', // can also be provided by setting env var HONEYCOMB_API_KEY
-  dataset: 'my-first-dataset',
+  dataset: 'my-first-dataset', // can also be provided by setting env var HONEYCOMB_DATASET
 }
 
 const Counter = wrapDurableObject(config, counter_do)
@@ -145,7 +145,7 @@ interface Config {
   sampleRates?: SampleRates | SampleRateFn //Either an object or function that configured sampling ([See below](#dynamic-sampling))
   sendTraceContext?: boolean | RegExp //set this to true to send a TraceContext with all fetch requests. With a Regex, we will check the URL against the regex first. Defaults to 'false'
   serviceName?: string //The serviceName you want to see in Honeycomb. Defaults to 'worker'
-  debugLog?: boolean // console.log response info for Honeycomb requests. Defaults to true
+  debugLog?: boolean // console.log response info for Honeycomb requests. Defaults to false
 }
 ```
 
