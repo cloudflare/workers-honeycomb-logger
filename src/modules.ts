@@ -164,7 +164,10 @@ function workerProxy<T>(config: ResolvedConfig, mod: ExportedHandler<T>): Export
         config.dataset = env.HONEYCOMB_DATASET || config.dataset
 
         if (!config.apiKey || !config.dataset) {
-          throw new Error('Need both HONEYCOMB_API_KEY and HONEYCOMB_DATASET to be configured.')
+          console.error(
+            new Error('Need both HONEYCOMB_API_KEY and HONEYCOMB_DATASET to be configured. Skipping trace.'),
+          )
+          return Reflect.apply(target, thisArg, argArray)
         }
 
         const ctx = argArray[2] as ExecutionContext
@@ -215,7 +218,8 @@ function proxyObjFetch(config: ResolvedConfig, orig_fetch: DoFetch, do_name: str
       config.dataset = env.HONEYCOMB_DATASET || config.dataset
 
       if (!config.apiKey || !config.dataset) {
-        throw new Error('Need both HONEYCOMB_API_KEY and HONEYCOMB_DATASET to be configured.')
+        console.error(new Error('Need both HONEYCOMB_API_KEY and HONEYCOMB_DATASET to be configured. Skipping trace.'))
+        return Reflect.apply(target, thisArg, argArray)
       }
 
       tracer.eventMeta.service.name = do_name
