@@ -248,6 +248,6 @@ function sampleRates(data: any): number {
 The one caveat with sampling and distributed tracing is that if you sample in both/all systems independently of one another, that it
 becomes likely that you will get partial traces.
 
-### Cloudflare Pages Support
+### Cloudflare Pages support
 
-For Cloudflare Pages Support, check out the [Honeycomb Pages Plugin](https://github.com/cloudflare/pages-plugins/tree/main/packages/honeycomb) 
+For Cloudflare Pages support, check out the [Honeycomb Pages Plugin](https://github.com/cloudflare/pages-plugins/tree/main/packages/honeycomb).
