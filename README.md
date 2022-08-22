@@ -14,6 +14,7 @@ Table of Contents
 - [Adding logs and other data](#adding-logs-and-other-data)
 - [Traces](#traces)
 - [Dynamic Sampling](#dynamic-sampling)
+- [Cloudflare Pages Support](#cloudflare-pages-support)
 
 ### Prerequisites
 
@@ -246,3 +247,7 @@ function sampleRates(data: any): number {
 
 The one caveat with sampling and distributed tracing is that if you sample in both/all systems independently of one another, that it
 becomes likely that you will get partial traces.
+
+### Cloudflare Pages support
+
+For Cloudflare Pages support, check out the [Honeycomb Pages Plugin](https://github.com/cloudflare/pages-plugins/tree/main/packages/honeycomb).
