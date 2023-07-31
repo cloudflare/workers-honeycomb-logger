@@ -213,6 +213,16 @@ export class RequestTracer extends Span {
     this.finish()
   }
 
+  public finishQueueResponse(response?: QueueHanderResult, error?: Error) {
+    if (response) {
+      this.addData({ queueResponse: response.data })
+    } else if (error) {
+      this.addData({ exception: true, responseException: error.toString() })
+      if (error.stack) this.addData({ stacktrace: error.stack })
+    }
+    this.finish()
+  }
+
   public setSampleRate(sampleRate: number) {
     this.sampleRate = sampleRate
   }

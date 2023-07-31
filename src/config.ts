@@ -46,6 +46,7 @@ export type ResolvedConfig = {
   serviceName: string
   sendTraceContext: boolean | RegExp
   debugLog: boolean
+  queueUrl: string
 }
 
 export type Config = Partial<ResolvedConfig>
@@ -61,6 +62,7 @@ const configDefaults: ResolvedConfig = {
   sendTraceContext: false,
   serviceName: 'worker',
   debugLog: false,
+  queueUrl: '',
 }
 
 function resolve(cfg: Config): ResolvedConfig {

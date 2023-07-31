@@ -35,6 +35,7 @@ import { RequestTracer } from './logging'
 export interface HoneycombEnv {
   HONEYCOMB_API_KEY?: string
   HONEYCOMB_DATASET?: string
+  QUEUE_URL?: string
 }
 
 function cacheTraceId(trace_id: string): void {
@@ -195,6 +196,50 @@ function workerProxy<T>(config: ResolvedConfig, mod: ExportedHandler<T>): Export
           }
         } catch (err) {
           tracer.finishResponse(undefined, err as Error)
+          ctx.waitUntil(tracer.sendEvents())
+          throw err
+        }
+      },
+    }),
+    queue: new Proxy(mod.queue!, {
+      apply: (target, thisArg, argArray): Promise<any> => {
+        const env = argArray[1] as HoneycombEnv
+        const request = new Request(env.QUEUE_URL || config.queueUrl)
+
+        const tracer = new RequestTracer(request, config)
+
+        request.tracer = tracer
+        argArray[3] = tracer
+        argArray[1] = proxyEnv(env, tracer)
+        config.apiKey = env.HONEYCOMB_API_KEY || config.apiKey
+
+        if (!config.apiKey || !config.dataset) {
+          console.error(
+            new Error('Need both HONEYCOMB_API_KEY and HONEYCOMB_DATASET to be configured. Skipping trace.'),
+          )
+          return Reflect.apply(target, thisArg, argArray)
+        }
+
+        const ctx = argArray[2] as ExecutionContext
+
+        // TODO: proxy ctx.waitUntil
+
+        try {
+          const result: any = Reflect.apply(target, thisArg, argArray)
+
+          result.then((response: QueueHanderResult) => {
+            tracer.finishQueueResponse(response)
+            ctx.waitUntil(tracer.sendEvents())
+            return response
+          })
+          result.catch((err: Error) => {
+            tracer.finishQueueResponse(undefined, err)
+            ctx.waitUntil(tracer.sendEvents())
+            throw err
+          })
+          return result
+        } catch (err) {
+          tracer.finishQueueResponse(undefined, err as Error)
           ctx.waitUntil(tracer.sendEvents())
           throw err
         }
